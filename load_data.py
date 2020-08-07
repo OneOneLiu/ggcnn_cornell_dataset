@@ -2,8 +2,19 @@ import os
 import glob
 import cv2
 import random
+import argparse
 
-cornell_path = 'cornell'
+def parse_args():
+    parser = argparse.ArgumentParser(description='Load cornell dataset')
+    
+    parser.add_argument('--cornell_path', type=str, default='cornell', help='the path of cornell dataset')
+    
+    args = parser.parse_args()
+    return args
+
+args = parse_args()
+cornell_path = args.cornell_path
+print(cornell_path)
 graspf = glob.glob(os.path.join(cornell_path,'*','pcd*cpos.txt'))
 graspf.sort()
 
@@ -59,7 +70,6 @@ def draw_rectangles(img_path,grasp_path):
     img = cv2.imread(img_path)
     grs = get_rectangles(grasp_path)
     
-    grs_num = len(grs)
     for gr in grs:
         #产生随机颜色
         color = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
@@ -69,7 +79,7 @@ def draw_rectangles(img_path,grasp_path):
         img = cv2.line(img,gr[3],gr[0],color,2) #补上最后一条封闭的线
     
     cv2.imshow('img',img)
-    cv2.waitKey(0)
+    cv2.waitKey(100)
     
     return img
 
