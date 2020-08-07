@@ -72,10 +72,12 @@ def draw_rectangles(img_path,grasp_path):
     
     for gr in grs:
         #产生随机颜色
-        color = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
+        #color = (random.randint(0,255),random.randint(0,255),random.randint(0,255))
+        color1 = (0,0,0)
+        color2 = (255,0,0)
         #绘制添加矩形框
         for i in range(3): #因为一个框只有四条线，所以这里是3
-            img = cv2.line(img,gr[i],gr[i+1],color,2)
+            img = cv2.line(img,gr[i],gr[i+1],color1 if i % 2 == 0 else color2,2)
         img = cv2.line(img,gr[3],gr[0],color,2) #补上最后一条封闭的线
     
     cv2.imshow('img',img)
