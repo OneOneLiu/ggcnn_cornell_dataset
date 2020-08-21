@@ -18,10 +18,12 @@ from .image import Image,DepthImage
 
 class Cornell(torch.utils.data.Dataset):
     #载入cornell数据集的类
-    def __init__(self,file_dir,include_depth=True,include_rgb=True,output_size = 300,start = 0.0,end = 1.0):
+    def __init__(self,file_dir,include_depth=True,include_rgb=True,start = 0.0,end = 1.0):
         '''
         :功能          : 数据集封装类的初始化函数，功能包括数据集读取，数据集划分，其他参数初始化等
         :参数 file_dir : str,按照官方文档的示例和之前的经验，这里需要读入数据集，所以需要指定数据的存放路径
+        :参数 include_depth : bool,是否包含depth图像输入
+        :参数 include_rgb   : bool,是否包含rgb图像输入
         :参数 start,end : float,为了方便数据集的拆分，这里定义添加两个边界参数start,end
         :返回 None
         ''' 
@@ -30,7 +32,6 @@ class Cornell(torch.utils.data.Dataset):
         #一些参数的传递
         self.include_depth = include_depth
         self.include_rgb = include_rgb
-        self.output_size = output_size #决定最后输出图像大小的参数，因为最后都是映射图
         
         #去指定路径载入数据集数据
         graspf = glob.glob(os.path.join(file_dir,'*','pcd*cpos.txt'))
