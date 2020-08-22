@@ -82,5 +82,3 @@ plt.subplot(144)
 plt.title('width_out')
 plt.imshow(width[i][0].data.numpy())
 plt.show()
-
-#待解决：目前的输入还未经过裁剪处理，结合当前的网络参数还不能获得理想的输出，所以暂时还不能进行训练
