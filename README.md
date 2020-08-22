@@ -21,8 +21,6 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 后缀为py的文件为建立好的完整程序
 
 
-刚发现如果文件在jupyter中处于打开状态的话，git这边无法push，记录一下以后注意。
-
 查看顺序为：
 
 1.load_data.ipynb
@@ -36,3 +34,8 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 
 1.width和length是反过来的
 2.角点的x,y坐标好像也是反过来的
+
+note:
+
+1.刚发现如果文件在jupyter中处于打开状态的话，git这边无法push，记录一下以后注意。
+2.截至到data_augmentation的程序在hp上测试无误，不晓得为什么在ubuntu上就不行，报了一个错，明天好好检查一下
