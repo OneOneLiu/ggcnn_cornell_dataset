@@ -265,7 +265,7 @@ class GraspRectangle:
         :param shape: Output shape
         :return: Indices of pixels within the centre thrid of the grasp rectangle.
         """
-        return Grasp(self.center, self.angle, self.length, self.width).as_gr.polygon_coords(shape)
+        return Grasp(self.center, self.angle, self.length/3, self.width).as_gr.polygon_coords(shape)
 
     def iou(self, gr, angle_threshold=np.pi/6):
         """
