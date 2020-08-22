@@ -2,6 +2,9 @@
 
 cornell grasp dataset analyses and process
 
+追随着大佬的脚步，从头复现一下大佬的论文程序，大佬的代码项目地址为：https://github.com/dougsm/ggcnn
+
+Follow the big guy's step to re-implement his excellent ggcnn code,his repositiry address is :https://github.com/dougsm/ggcnn
 
 文件夹：
 |-cornell:存放原始数据集解压后数据
