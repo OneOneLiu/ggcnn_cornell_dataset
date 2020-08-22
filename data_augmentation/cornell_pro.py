@@ -111,8 +111,10 @@ class Cornell(torch.utils.data.Dataset):
         :参数 width :bool,是否生成返回夹爪宽度映射图
         :返回       :以图片的方式返回定义一个抓取的多个参数，包括中心点，角度，宽度和长度
         '''
-        grasp_rectangles = Grasps.load_from_cornell_files(self.graspf[idx])
-        pos_img,angle_img,width_img = grasp_rectangles.generate_img(shape = (480,640))
+        grs = Grasps.load_from_cornell_files(self.graspf[idx])
+        grs.offset((-(grs.center[0]-self.output_size//2),-((grs.center[1]-self.output_size//2))))
+        
+        pos_img,angle_img,width_img = grs.generate_img(shape = (self.output_size,self.output_size))
         
         return pos_img,angle_img,width_img
     def __getitem__(self,idx):

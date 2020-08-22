@@ -78,13 +78,28 @@ class Grasp:
         
         return (np.arctan2(-dy,dx) + np.pi/2) % np.pi - np.pi/2
     
+    def polygon_coords(self, shape=None):
+        """
+        :功能          : 计算并返回给定抓取矩形内部点的坐标
+        :参数 shape    : tuple, optional.Image shape which is used to determine the maximum extent of output pixel coordinates.
+        :返回 1darray  : rr,cc 本抓取框内部点的行列坐标
+        """
+        return polygon(self.points[:, 0], self.points[:, 1], shape)
+    
     def compact_polygon_coords(self,shape):
         '''
         :功能          : 计算并返回本抓取矩形内部点的坐标
         :参数 shape    : tuple, optional.Image shape which is used to determine the maximum extent of output pixel coordinates.
         :返回 ndarray  : rr,cc 本抓取框内部点的行列坐标
         ''' 
-        return polygon(self.points[:,0],self.points[:,1],shape)
+        return Grasp_cpaw(self.center, self.angle, self.length, self.width/3).as_gr.polygon_coords(shape)
+    
+    def offset(self, offset):
+        """
+        :参数       : 偏移类中所包含抓取框的坐标
+        :参数 offset: array [y, x] 要偏移的距离
+        """
+        self.points += np.array(offset).reshape((1, 2))#这个操作可以保证所有的x坐标都加上x的偏移量，所有的y都加上y的偏移量
 
 class Grasps:
     '''定义一个多抓取框处理类，主要功能是从原始的标注文件中读出多个抓取框并将其构建成多个单一的抓取框Grasp类，同时能够对这些属于同一对象的多个抓取框对象进行一些数据的统一集成处理'''
@@ -97,6 +112,17 @@ class Grasps:
             self.grs = grs
         else:
             self.grs = []
+        
+    def __getattr__(self, attr):
+        """
+        当用户调用某一个Grasps类中没有的属性时，查找iGrasp类中有没有这个函数，有的话就对Grasps类中的每个Grasp对象调用它。
+        这里是直接从ggcnn里面搬运过来的，高端操作，，，学到了
+        """
+        # Fuck yeah python.
+        if hasattr(Grasp, attr) and callable(getattr(Grasp, attr)):
+            return lambda *args, **kwargs: list(map(lambda gr: getattr(gr, attr)(*args, **kwargs), self.grs))
+        else:
+            raise AttributeError("Couldn't find function %s in BoundingBoxes or BoundingBox" % attr)
     
     @classmethod
     def load_from_cornell_files(cls,cornell_grasp_files):
@@ -122,7 +148,7 @@ class Grasps:
 
             return cls(grasp_rectangles)#返回实例化的类
         
-    def generate_img(self,pos = True,angle = True,width = True,shape = (480,640)):
+    def generate_img(self,pos = True,angle = True,width = True,shape = (300,300)):
         '''
         :功能       :将本对象的多个的抓取框信息融合并生成指定的映射图，以这种方式返回定义一个抓取的多个参数，包括中心点，角度，宽度
         :参数 pos   :bool,是否生成返回位置映射图
@@ -167,3 +193,43 @@ class Grasps:
             centers.append(gr.center)
         center = np.mean(np.array(centers),axis = 0).astype(np.uint)
         return center
+
+class Grasp_cpaw:
+    '''
+    前面的抓取类都是由四个角点坐标信息定义的，如果想对框进行什么操作的话，不太方便，
+    这里使用其中提取出的中心点坐标，角度，以及长宽来定义一个矩形，对于这个矩形的整体处
+    理比较方方便（比如将矩形的宽度缩小三倍），但是最终的绘制还是要通过角点坐标来实现，所以，里面还要有一个能够根据
+    这几个参数反求角点坐标的函数
+    '''
+    def __init__(self,center, angle, length=60, width=30):
+        '''
+        :功能       :类初始化函数，进行参数传递
+        :参数       :这些参数是啥很明显了吧，就不再赘述了
+        '''
+        self.center = center
+        self.angle = angle   # 正角度表示沿水平方向逆时针旋转
+        self.length = length
+        self.width = width
+        
+    @property
+    def as_gr(self):
+        '''
+        :功能       :通过这几个参数反求所定义的坐标角点，并由其建立返回Grasp对象
+        :返回       :由反求出的角点所定义的Grasp对象
+        '''
+        xo = np.cos(self.angle)
+        yo = np.sin(self.angle)
+        
+        y1 = self.center[0] - self.width / 2 * xo
+        x1 = self.center[1] + self.width / 2 * yo
+        y2 = self.center[0] + self.width / 2 * xo
+        x2 = self.center[1] - self.width / 2 * yo
+        
+        return Grasp(np.array(
+            [
+             [y1 - self.length/2 * yo, x1 - self.length/2 * xo],
+             [y2 - self.length/2 * yo, x2 - self.length/2 * xo],
+             [y2 + self.length/2 * yo, x2 + self.length/2 * xo],
+             [y1 + self.length/2 * yo, x1 + self.length/2 * xo],
+             ]
+        ).astype(np.float))
