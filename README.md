@@ -32,3 +32,4 @@ cornell grasp dataset analyses and process
 与ggcnn中定义的不同之处：
 
 1.width和length是反过来的
+2.角点的x,y坐标好像也是反过来的
