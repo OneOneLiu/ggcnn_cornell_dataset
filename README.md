@@ -27,7 +27,7 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 
 2.net_data_stream.ipynb
 
-
+3.data_augmentation.ipynb
 
 
 与ggcnn中定义的不同之处：
