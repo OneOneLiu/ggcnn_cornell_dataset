@@ -8,7 +8,6 @@ Created on Fri Aug 21 16:31:41 2020
 
 #import cv2 #这块本来是用cv2.imread来做读取的，后面发现读不了tiff，所以就改用imageio了
 from imageio import imread
-import numpy as np
 
 class Image:
     '''定义一个图像类，主要功能是将原始的图像输入转化为适合网络训练的格式并根据图像处理需求完成一些其他功能'''
@@ -48,7 +47,7 @@ class Image:
         :参数 top_left     :ndarray,要裁剪区域的左上角点坐标
         :参数 bottom_right :ndarray,要裁剪区域的右下角点坐标
         '''
-        self.img = self.img[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
+        self.img = self.img[int(top_left[1]):int(bottom_right[1]), int(top_left[0]):int(bottom_right[0])]
 
 class DepthImage(Image):
     '''深度图像类，读取，载入，正则等预处理都是一样的，后面可能会添加一些针对深度图的专属处理功能'''

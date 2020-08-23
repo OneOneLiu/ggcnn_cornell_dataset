@@ -10,7 +10,7 @@ import torch
 import matplotlib.pyplot as plt
 import numpy as np
 
-from net_data_stream.cornell_pro import Cornell
+from net_data_stream.cornell import Cornell
 from net_data_stream.ggcnn import GGCNN
 
 #准备数据集
