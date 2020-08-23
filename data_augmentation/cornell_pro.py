@@ -112,7 +112,7 @@ class Cornell(torch.utils.data.Dataset):
         :返回       :以图片的方式返回定义一个抓取的多个参数，包括中心点，角度，宽度和长度
         '''
         grs = Grasps.load_from_cornell_files(self.graspf[idx])
-        grs.offset((-int(grs.center[0]-self.output_size//2),-int(grs.center[1]-self.output_size//2)))
+        grs.offset((-(grs.center[0]-self.output_size//2),-(grs.center[1]-self.output_size//2)))
         
         pos_img,angle_img,width_img = grs.generate_img(shape = (self.output_size,self.output_size))
         

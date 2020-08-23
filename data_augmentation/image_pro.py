@@ -47,7 +47,7 @@ class Image:
         :参数 top_left     :ndarray,要裁剪区域的左上角点坐标
         :参数 bottom_right :ndarray,要裁剪区域的右下角点坐标
         '''
-        self.img = self.img[int(top_left[1]):int(bottom_right[1]), int(top_left[0]):int(bottom_right[0])]
+        self.img = self.img[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
 
 class DepthImage(Image):
     '''深度图像类，读取，载入，正则等预处理都是一样的，后面可能会添加一些针对深度图的专属处理功能'''

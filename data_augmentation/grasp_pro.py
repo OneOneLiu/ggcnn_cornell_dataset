@@ -39,7 +39,7 @@ class Grasp:
         :功能          : 计算本类中所包含的抓取框的中心点
         :返回 1darray  : 本类所包含抓取框的中心点array[x,y]
         '''
-        center = np.mean(self.points,axis = 0).astype(np.int)
+        center = np.mean(self.points,axis = 0).astype(np.uint32)
         return center
     
     @property
@@ -191,7 +191,7 @@ class Grasps:
         centers = []
         for gr in self.grs:
             centers.append(gr.center)
-        center = np.mean(np.array(centers),axis = 0).astype(np.uint)
+        center = np.mean(np.array(centers),axis = 0).astype(np.uint32)
         return center
 
 class Grasp_cpaw:
