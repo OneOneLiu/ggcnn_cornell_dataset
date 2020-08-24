@@ -14,10 +14,10 @@ import numpy as np
 from train.cornell_pro import Cornell
 from train.ggcnn import GGCNN
 
-batch_size = 64
+batch_size = 32
 
 #准备数据集
-cornell_data = Cornell('cornell',output_size = 250)
+cornell_data = Cornell('cornell',output_size = 200)
 dataset = torch.utils.data.DataLoader(cornell_data,batch_size = batch_size)
 
 #从数据集中读取一个样本
@@ -40,7 +40,6 @@ net = net.to(device)
 x = xc.to(device)
 y = [yy.to(device) for yy in yc]
 
-print(x.shape)
 #动态显示每次优化过后的预测结果
 plt.ion()
 plt.show()
@@ -52,8 +51,6 @@ num = 60
 for i in range(200):
     losses = net.compute_loss(x,y)
     loss = losses['loss']
-    print(i)
-    print(loss)
     #反向传播优化
     optimizer.zero_grad()
     loss.backward()
