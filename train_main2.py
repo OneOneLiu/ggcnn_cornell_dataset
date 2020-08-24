@@ -12,9 +12,9 @@ import torch.optim as optim
 from train.cornell_pro import Cornell
 from train.ggcnn import GGCNN
 
-batch_size = 32
-batches_per_epoch = 1000
-epochs = 10
+batch_size = 8
+batches_per_epoch = 200
+epochs = 3
 lr = 0.001
 
 
@@ -49,7 +49,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             if batch_idx >= batches_per_epoch:
                 break
             
-            #将数据传到GPU，目前jupyter下无法使用
+            #将数据传到GPU
             xc = x.to(device)
             yc = [yy.to(device) for yy in y]
             
@@ -59,7 +59,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             loss = lossdict['loss']
             
             #打印一下训练过程
-            if batch_idx % 2 == 0:
+            if batch_idx % 10 == 0:
                 print('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(epoch, batch_idx, loss.item()))
             
             #记录总共的损失
