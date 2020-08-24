@@ -17,7 +17,7 @@ from train.ggcnn import GGCNN
 batch_size = 64
 
 #准备数据集
-cornell_data = Cornell('cornell')
+cornell_data = Cornell('cornell',output_size = 250)
 dataset = torch.utils.data.DataLoader(cornell_data,batch_size = batch_size)
 
 #从数据集中读取一个样本
@@ -40,6 +40,7 @@ net = net.to(device)
 x = xc.to(device)
 y = [yy.to(device) for yy in yc]
 
+print(x.shape)
 #动态显示每次优化过后的预测结果
 plt.ion()
 plt.show()
