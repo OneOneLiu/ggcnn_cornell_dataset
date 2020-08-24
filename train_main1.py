@@ -14,10 +14,10 @@ import numpy as np
 from train.cornell_pro import Cornell
 from train.ggcnn import GGCNN
 
-batch_size = 32
+batch_size = 16
 
 #准备数据集
-cornell_data = Cornell('cornell',output_size = 200)
+cornell_data = Cornell('cornell',output_size = 300)
 dataset = torch.utils.data.DataLoader(cornell_data,batch_size = batch_size)
 
 #从数据集中读取一个样本
@@ -45,7 +45,7 @@ plt.ion()
 plt.show()
 
 #想要查看的结果编号num<batch_size
-num = 60
+num = 10
 
 
 for i in range(200):
