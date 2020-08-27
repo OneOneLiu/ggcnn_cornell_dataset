@@ -12,9 +12,9 @@ import torch.optim as optim
 from train.cornell_pro import Cornell
 from train.ggcnn import GGCNN
 
-batch_size = 8
-batches_per_epoch = 200
-epochs = 3
+batch_size = 32
+batches_per_epoch = 1000
+epochs = 30
 lr = 0.001
 
 
@@ -82,12 +82,12 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
         for l in results['losses']:
             results['losses'][l] /= batch_idx
         return results
-def run():
+def run(net):
     #获取设备
     device = torch.device("cuda:0")
     
     #实例化一个网络
-    net = GGCNN(4)
+    #net = GGCNN(4)
     net = net.to(device)
     
     #准备数据集
@@ -100,6 +100,9 @@ def run():
     #开始主循环
     for epoch in range(epochs):
         train_results = train(epoch, net, device, dataset, optimizer, batches_per_epoch)
-        
+    
+    return train_results
 if __name__ == '__main__':
-    run()
+    #这块先把网络在外部定义，方便导出，后面写了保存函数就可以直接放在里面了
+    net = GGCNN(4)
+    run(net)

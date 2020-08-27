@@ -20,6 +20,7 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 
 |-train:训练调试过程相关文件
 
+|-validate:模型性能验证程序调试过程相关文件
 
 文件说明：
 
@@ -27,7 +28,7 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 
 后缀为py的文件为与ipynb对应的建立好的完整程序
 
-
+trian_model:一个已经初步训练好的模型
 查看顺序为：
 
 1.load_data.ipynb
@@ -37,6 +38,8 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 3.data_augmentation.ipynb
 
 4.train.ipynb
+
+5.validate.ipynb
 
 
 与ggcnn中定义的不同之处：
@@ -49,4 +52,8 @@ note:
 
 1.刚发现如果文件在jupyter中处于打开状态的话，git这边无法push，记录一下以后注意。
 
-2.截至到data_augmentation的程序在hp上测试无误，不晓得为什么在ubuntu上就不行，报了一个错，明天好好检查一下，已经解决详见support_files/functions 第5点
+2.截至到data_augmentation的程序在hp上测试无误，不晓得为什么在ubuntu上就不行，报了一个错，明天好好检查一下，已经解决，详见support_files/functions 第5点
+
+3.调试过程中遇到的重大bug1：调节output_size后网络的输出与标注shape不匹配导致的一系列问题，问题原因：输入维度发生改变后，网络结构不变，输出的shape本就会发生变化，想要控制具体的输出尺寸就必须对网络参数进行仔细设计调整
+
+4.调试过程中遇到的重大bug2：Gaussian滤波后的十字问题，问题原因：val过程中batch_size的设定应当为1
