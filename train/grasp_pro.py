@@ -115,7 +115,7 @@ class Grasps:
         
     def __getattr__(self, attr):
         """
-        当用户调用某一个Grasps类中没有的属性时，查找iGrasp类中有没有这个函数，有的话就对Grasps类中的每个Grasp对象调用它。
+        当用户调用某一个Grasps类中没有的属性时，查找Grasp类中有没有这个函数，有的话就对Grasps类中的每个Grasp对象调用它。
         这里是直接从ggcnn里面搬运过来的，高端操作，，，学到了
         """
         # Fuck yeah python.

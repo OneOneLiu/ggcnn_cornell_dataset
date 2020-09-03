@@ -3,6 +3,8 @@
 """
 Created on Sun Aug 23 15:32:02 2020
 
+#这个程序是在一个batch上测试的程序，只在一个样本上训练的，并没有遍历整个数据集，train_main2.py是遍历了整个数据集的
+
 @author: ldh
 """
 
@@ -41,25 +43,31 @@ x = xc.to(device)
 y = [yy.to(device) for yy in yc]
 
 #动态显示每次优化过后的预测结果
+fig = plt.figure()
 plt.ion()
 plt.show()
 
 #想要查看的结果编号num<batch_size
 num = 10
 
-
-for i in range(200):
+loss_results = []
+max_results = []
+width_results = []
+for i in range(1000):
     losses = net.compute_loss(x,y)
     loss = losses['loss']
+    #print(loss)
     #反向传播优化
     optimizer.zero_grad()
     loss.backward()
     
     optimizer.step()
-    
+    pos,cos,sin,width = net.forward(x)
+    loss_results.append(loss)
+    max_results.append(pos.cpu().data.numpy().max())
+    width_results.append(width.cpu().data.numpy().max())
     if i % 5 == 0:
         plt.cla()
-        pos,cos,sin,width = net.forward(x)
         pos = pos.cpu()
         cos = cos.cpu()
         sin = sin.cpu()
@@ -77,3 +85,14 @@ for i in range(200):
         plt.title('width_out')
         plt.imshow(width[num][0].data.numpy(),cmap=plt.cm.gray)
         plt.pause(0.01)
+        
+        #拿它做个预测试试
+        fig.suptitle('epoch:{0}\n loss:{1} \n max:{2}'.format(i,loss, pos.cpu().data.numpy().max()))
+
+fig2 = plt.figure()
+fig2.suptitle('loss and q_img & width_img max value')
+plt.plot(loss_results,label = 'loss')
+plt.plot(max_results,label = 'q_img_max')
+plt.plot(width_results,label = 'width_img_max')
+plt.legend()
+plt.show()
