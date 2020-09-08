@@ -44,7 +44,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
-        for x, y in train_data:
+        for x, y, _ in train_data:
             batch_idx += 1
             if batch_idx >= batches_per_epoch:
                 break
