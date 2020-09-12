@@ -106,3 +106,4 @@ if __name__ == '__main__':
     #这块先把网络在外部定义，方便导出，后面写了保存函数就可以直接放在里面了
     net = GGCNN(4)
     run(net)
+    torch.save(net,'trained_models/model')

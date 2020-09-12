@@ -22,6 +22,8 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 
 |-validate:模型性能验证程序调试过程相关文件
 
+|-trained_models:训练好的模型
+
 文件说明：
 
 后缀为ipynb的文件为相应程序的原始建立过程
@@ -56,4 +58,4 @@ note:
 
 3.调试过程中遇到的重大bug1：调节output_size后网络的输出与标注shape不匹配导致的一系列问题，问题原因：输入维度发生改变后，网络结构不变，输出的shape本就会发生变化，想要控制具体的输出尺寸就必须对网络参数进行仔细设计调整
 
-4.调试过程中遇到的重大bug2：Gaussian滤波后的十字问题，问题原因：val过程中batch_size的设定应当为1
+4.调试过程中遇到的重大bug2：Gaussian滤波后的十字问题，问题原因：所使用的Gaussian滤波函数不支持一次输入多个样本，val过程中batch_size的设定应当为1

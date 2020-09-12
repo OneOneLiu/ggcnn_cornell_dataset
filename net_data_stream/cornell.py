@@ -89,9 +89,6 @@ class Cornell(torch.utils.data.Dataset):
         '''
         :功能       :读取返回指定id的抓取标注参数并将多个抓取框的参数返回融合
         :参数 idx   :int,要读取的数据id
-        :参数 pos   :bool,是否生成返回位置映射图
-        :参数 angle :bool,是否生成返回角度映射图
-        :参数 width :bool,是否生成返回夹爪宽度映射图
         :返回       :以图片的方式返回定义一个抓取的多个参数，包括中心点，角度，宽度和长度
         '''
         grasp_rectangles = Grasps.load_from_cornell_files(self.graspf[idx])
