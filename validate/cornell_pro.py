@@ -112,7 +112,8 @@ class Cornell(torch.utils.data.Dataset):
         :返回       :以图片的方式返回定义一个抓取的多个参数，包括中心点，角度，宽度和长度，同时返回idx，方便后面validate的时候查找真实的抓取框用
         '''
         grs = Grasps.load_from_cornell_files(self.graspf[idx])
-        grs.offset((-(grs.center[0]-self.output_size//2),-(grs.center[1]-self.output_size//2)))
+        center, left, top = self._get_crop_attrs(idx)
+        grs.offset((-left,-top))
         
         pos_img,angle_img,width_img = grs.generate_img(shape = (self.output_size,self.output_size))
         
@@ -126,8 +127,10 @@ class Cornell(torch.utils.data.Dataset):
         '''
         raw_grasps = Grasps.load_from_cornell_files(self.graspf[idx])
         center, left, top = self._get_crop_attrs(idx)
-        raw_grasps.offset((-top,-left))
+        raw_grasps.offset((-left,-top))
+        
         return raw_grasps
+
     def __getitem__(self,idx):
         # 载入深度图像
         #print(idx)

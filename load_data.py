@@ -14,7 +14,7 @@ def parse_args():
 
 args = parse_args()
 cornell_path = args.cornell_path
-print(cornell_path)
+#print(cornell_path)
 graspf = glob.glob(os.path.join(cornell_path,'*','pcd*cpos.txt'))
 graspf.sort()
 
@@ -77,8 +77,8 @@ def draw_rectangles(img_path,grasp_path):
         color2 = (255,0,0)
         #绘制添加矩形框
         for i in range(3): #因为一个框只有四条线，所以这里是3
-            img = cv2.line(img,gr[i],gr[i+1],color1 if i % 2 == 0 else color2,2)
-        img = cv2.line(img,gr[3],gr[0],color,2) #补上最后一条封闭的线
+            img = cv2.line(img,gr[i],gr[i+1],color1 if i % 2 == 0 else color2,1)
+        img = cv2.line(img,gr[3],gr[0],color2,1) #补上最后一条封闭的线
     
     cv2.imshow('img',img)
     cv2.waitKey(100)
@@ -86,4 +86,5 @@ def draw_rectangles(img_path,grasp_path):
     return img
 
 if __name__ == "__main__":
-    img = draw_rectangles(rgbf[500],graspf[500])
+    idx = 692
+    img = draw_rectangles(rgbf[idx],graspf[idx])

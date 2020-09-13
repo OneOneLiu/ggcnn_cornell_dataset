@@ -51,17 +51,34 @@ for grasp_pre in grasps_pre:
         print('true')
 
 
-#调试   
-a = np.zeros([300,300])
-a_points = grasps_pre[0].as_gr.points.astype(np.uint8)#预测出的抓取
-b_points = grasps_true.points[3]#真实的抓取，可以先测试一下跟哪个标注框的重合度较高，然后拿好的那个来计算
+#调试，可视化看一下预测出的结果和真实的标注结果
+from validate.image_pro import Image
 
+img = Image.from_file(val_data.dataset.rgbf[idx])
+left = val_data.dataset._get_crop_attrs(idx)[1]
+top = val_data.dataset._get_crop_attrs(idx)[2]
+img.crop((left,top),(left+300,top+300))
+
+a = img.img
+a_points = grasps_pre[0].as_gr.points.astype(np.uint8)#预测出的抓取
+b_points = grasps_true.points
+
+color1 = (255,255,0)
+color2 = (255,0,0)
+#可以不注释这一句看看直接用rectangle会出来多么不好的结果，这个失误耽误了我4个小时的时间
 a = cv2.rectangle(a,tuple(a_points[0]),tuple(a_points[2]),2)
+for i in range(3):
+    img = cv2.line(a,tuple(a_points[i]),tuple(a_points[i+1]),color1 if i % 2 == 0 else color2,1)
+img = cv2.line(a,tuple(a_points[3]),tuple(a_points[0]),color2,1)
 plt.subplot(211)
 plt.imshow(a)
 
-cv2.rectangle(a,tuple(b_points[0]),tuple(b_points[2]),2)
-
+color1 = (0,0,0)
+color2 = (0,255,0)
+for b_point in b_points:
+    for i in range(3):
+        img = cv2.line(a,tuple(b_point[i]),tuple(b_point[i+1]),color1 if i % 2 == 0 else color2,1)
+    img = cv2.line(a,tuple(b_point[3]),tuple(b_point[0]),color2,1)
 plt.subplot(212)
 plt.imshow(a)
 plt.show()

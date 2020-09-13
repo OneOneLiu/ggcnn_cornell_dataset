@@ -12,9 +12,9 @@ import torch.optim as optim
 from train.cornell_pro import Cornell
 from train.ggcnn import GGCNN
 
-batch_size = 32
-batches_per_epoch = 1000
-epochs = 30
+batch_size = 16
+batches_per_epoch = 1200
+epochs = 60
 lr = 0.001
 
 
@@ -44,7 +44,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
-        for x, y, _ in train_data:
+        for x, y,in train_data:
             batch_idx += 1
             if batch_idx >= batches_per_epoch:
                 break
