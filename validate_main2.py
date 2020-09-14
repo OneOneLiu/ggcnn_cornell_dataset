@@ -22,8 +22,8 @@ from validate.image_pro import Image
 
 #一些训练参数的设定
 batch_size = 16
-batches_per_epoch = 200
-epochs = 60
+batches_per_epoch = 1200
+epochs = 600
 lr = 0.001
 
 #这部分是直接copy的train_main2.py
@@ -146,10 +146,12 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
                     val_result['failed'] += 1
         
         if vis:
+            #前面几个迭代过程没有有效的grasp_pre提取出来，所以，len是0，所以，不会有可视化结果显示出来
             if len(grasps_pre)>0:
                 visualization(val_data,idx,grasps_pre,grasps_true)
             
-        print('acc:{}'.format(val_result['correct']/(batches_per_epoch*batch_size)))
+        #print('acc:{}'.format(val_result['correct']/(batches_per_epoch*batch_size)))绝对的计算方法不清楚总数是多少，那就用相对的方法吧
+        print('acc:{}'.format(val_result['correct']/(val_result['correct']+val_result['failed'])))
     return(val_result)
 
 #这部分是直接copy的train_main2.py  
@@ -180,7 +182,7 @@ def run(net):
     return train_results,validate_results
 
 def visualization(val_data,idx,grasps_pre,grasps_true):
-    #最开始的几个迭代过程中不会有成功的预测出现，所以，是不会有visuaization出现的
+    #最开始的几个迭代过程中不会有q_img值足够大的预测出现，所以，此时提出不出有效的抓取，进而是不会有visuaization出现的
     img = Image.from_file(val_data.dataset.rgbf[idx])
     left = val_data.dataset._get_crop_attrs(idx)[1]
     top = val_data.dataset._get_crop_attrs(idx)[2]
