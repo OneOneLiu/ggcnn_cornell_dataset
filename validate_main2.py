@@ -18,11 +18,12 @@ import cv2
 from validate.ggcnn import GGCNN
 from validate.cornell_pro import Cornell
 from validate.functions import post_process,detect_grasps,max_iou
+from validate.image_pro import Image
 
 #一些训练参数的设定
 batch_size = 16
 batches_per_epoch = 200
-epochs = 20
+epochs = 60
 lr = 0.001
 
 #这部分是直接copy的train_main2.py
@@ -67,7 +68,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             loss = lossdict['loss']
             
             #打印一下训练过程
-            if batch_idx % 2 == 0:
+            if batch_idx % 10 == 0:
                 print('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(epoch, batch_idx, loss.item()))
             
             #记录总共的损失
@@ -91,14 +92,15 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             results['losses'][l] /= batch_idx
         return results
 
-def validate(net,device,val_data,batches_per_epoch):
+def validate(net,device,val_data,batches_per_epoch,vis = False):
     """
     :功能: 在给定的验证集上验证给定模型的是被准确率并返回
-    :参数: net              : 要验证的网络模型
+    :参数: net              : torch.model,要验证的网络模型
     :参数: device           : 验证使用的设备
-    :参数: val_data         : 验证所用数据集
-    :参数: batches_per_epoch: 一次验证中用多少个batch的数据，也就是说，要不要每次validate都在整个数据集上迭代，还是只在指定数量的batch上迭代
-
+    :参数: val_data         : dataloader,验证所用数据集
+    :参数: batches_per_epoch: int,一次验证中用多少个batch的数据，也就是说，要不要每次validate都在整个数据集上迭代，还是只在指定数量的batch上迭代
+    :参数: vis              : bool,validate时是否可视化输出
+    
     :返回: 模型在给定验证集上的正确率
     """
     val_result = {
@@ -142,8 +144,12 @@ def validate(net,device,val_data,batches_per_epoch):
                     val_result['correct'] += 1
                 else:
                     val_result['failed'] += 1
-        print('correct',val_result['correct'])
-        print('batch_per_epoch',batches_per_epoch)
+        
+        if vis:
+            if len(grasps_pre)>0:
+                visualization(val_data,idx,grasps_pre,grasps_true)
+            
+        print('acc:{}'.format(val_result['correct']/(batches_per_epoch*batch_size)))
     return(val_result)
 
 #这部分是直接copy的train_main2.py  
@@ -170,9 +176,36 @@ def run(net):
     for epoch in range(epochs):
         train_results = train(epoch, net, device, train_dataset, optimizer, batches_per_epoch)
         print('validating...')
-        validate_results = validate(net,device,val_dataset,batches_per_epoch)
-    
+        validate_results = validate(net,device,val_dataset,batches_per_epoch,vis = True)
     return train_results,validate_results
+
+def visualization(val_data,idx,grasps_pre,grasps_true):
+    #最开始的几个迭代过程中不会有成功的预测出现，所以，是不会有visuaization出现的
+    img = Image.from_file(val_data.dataset.rgbf[idx])
+    left = val_data.dataset._get_crop_attrs(idx)[1]
+    top = val_data.dataset._get_crop_attrs(idx)[2]
+    img.crop((left,top),(left+300,top+300))
+    
+    a = img.img
+    
+    a_points = grasps_pre[0].as_gr.points.astype(np.uint8)#预测出的抓取
+    b_points = grasps_true.points
+    color1 = (255,255,0)
+    color2 = (255,0,0)
+    for i in range(3):
+        img = cv2.line(a,tuple(a_points[i]),tuple(a_points[i+1]),color1 if i % 2 == 0 else color2,1)
+    img = cv2.line(a,tuple(a_points[3]),tuple(a_points[0]),color2,1)
+    
+    color1 = (0,0,0)
+    color2 = (0,255,0)
+    
+    for b_point in b_points:
+        for i in range(3):
+            img = cv2.line(a,tuple(b_point[i]),tuple(b_point[i+1]),color1 if i % 2 == 0 else color2,1)
+        img = cv2.line(a,tuple(b_point[3]),tuple(b_point[0]),color2,1)
+    #cv2.imshow('img',a)
+    cv2.imwrite('img.png',a)
+    #cv2.waitKey(1000)
 
 if __name__ == '__main__':
     net = GGCNN(4)

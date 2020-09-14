@@ -82,4 +82,3 @@ for b_point in b_points:
 plt.subplot(122)
 plt.imshow(a)
 plt.show()
-plt.imsave('a.png',a)
