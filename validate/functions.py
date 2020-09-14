@@ -47,12 +47,12 @@ def detect_grasps(q_out,ang_out,wid_out = None,no_grasp = 1):
         grasp_point = tuple(grasp_point_array)
         grasp_angle = ang_out[grasp_point]
         grasp_width = wid_out[grasp_point]
-    g = Grasp_cpaw(grasp_point,grasp_angle,grasp_width)
-    if wid_out is not None:
-        g.width = wid_out[grasp_point]*150
-        g.length = g.width/2
-    grasps_pre.append(g)
-    
+        g = Grasp_cpaw(grasp_point,grasp_angle,grasp_width)
+        if wid_out is not None:
+            g.width = wid_out[grasp_point]*150
+            g.length = g.width/2
+        grasps_pre.append(g)
+
     return grasps_pre
 
 def max_iou(grasp_pre,grasps_true):
@@ -95,6 +95,6 @@ def iou(grasp_pre,grasp_true):
         return 0
     
     intersection = np.sum(canvas == 2)
-    print(intersection/union)
+    #print(intersection/union)
     return intersection/union
     

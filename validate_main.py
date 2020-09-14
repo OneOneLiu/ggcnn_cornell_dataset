@@ -2,7 +2,7 @@
 """
 Created on Fri Sep 11 21:29:59 2020
 
-验证函数一次预测是否正确的函数
+验证函数一次预测是否正确的函数，这里仅仅是示例，一个测试而已，还没有将它集成到一个完整的训练过程中去，集成到训练过程中去的程序见第二部分
 
 @author: LiuDahui
 """
@@ -16,7 +16,7 @@ from validate.cornell_pro import Cornell
 from validate.functions import post_process,detect_grasps,max_iou
 
 #要验证网络性能，就必须要有一个训练完的网络，这里不从头训练，直接载入一个训练好的模型
-net = torch.load('trained_models/model1')
+net = torch.load('trained_models/model')
 
 #设置训练设备
 device = torch.device('cuda:0')
@@ -51,7 +51,7 @@ for grasp_pre in grasps_pre:
         print('true')
 
 
-#调试，可视化看一下预测出的结果和真实的标注结果
+#调试，可视化看一下预测出的结果和真实的标注结果，单看指标可不能说明一个预测的抓取是否真的有效
 from validate.image_pro import Image
 
 img = Image.from_file(val_data.dataset.rgbf[idx])
@@ -66,11 +66,11 @@ b_points = grasps_true.points
 color1 = (255,255,0)
 color2 = (255,0,0)
 #可以不注释这一句看看直接用rectangle会出来多么不好的结果，这个失误耽误了我4个小时的时间
-a = cv2.rectangle(a,tuple(a_points[0]),tuple(a_points[2]),2)
+#a = cv2.rectangle(a,tuple(a_points[0]),tuple(a_points[2]),2)
 for i in range(3):
     img = cv2.line(a,tuple(a_points[i]),tuple(a_points[i+1]),color1 if i % 2 == 0 else color2,1)
 img = cv2.line(a,tuple(a_points[3]),tuple(a_points[0]),color2,1)
-plt.subplot(211)
+plt.subplot(121)
 plt.imshow(a)
 
 color1 = (0,0,0)
@@ -79,7 +79,7 @@ for b_point in b_points:
     for i in range(3):
         img = cv2.line(a,tuple(b_point[i]),tuple(b_point[i+1]),color1 if i % 2 == 0 else color2,1)
     img = cv2.line(a,tuple(b_point[3]),tuple(b_point[0]),color2,1)
-plt.subplot(212)
+plt.subplot(122)
 plt.imshow(a)
 plt.show()
 plt.imsave('a.png',a)
