@@ -212,3 +212,4 @@ def visualization(val_data,idx,grasps_pre,grasps_true):
 if __name__ == '__main__':
     net = GGCNN(4)
     run(net)
+    torch.save(net,'trained_models/model_v')
