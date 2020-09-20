@@ -11,12 +11,11 @@ Created on Sun Aug 23 15:32:02 2020
 import torch
 import torch.optim as optim
 import matplotlib.pyplot as plt
-import numpy as np
 
 from train.cornell_pro import Cornell
 from train.ggcnn import GGCNN
 
-batch_size = 16
+batch_size = 32
 
 #准备数据集
 cornell_data = Cornell('cornell',output_size = 300)
@@ -25,7 +24,7 @@ dataset = torch.utils.data.DataLoader(cornell_data,batch_size = batch_size)
 #从数据集中读取一个样本
 for x,y in dataset:
     xc = x
-    yc = y
+    yc = y 
     break
 
 #实例化一个网络
@@ -42,6 +41,7 @@ net = net.to(device)
 x = xc.to(device)
 y = [yy.to(device) for yy in yc]
 
+print(x.shape)
 #动态显示每次优化过后的预测结果
 fig = plt.figure()
 plt.ion()
@@ -56,7 +56,6 @@ width_results = []
 for i in range(1000):
     losses = net.compute_loss(x,y)
     loss = losses['loss']
-    #print(loss)
     #反向传播优化
     optimizer.zero_grad()
     loss.backward()
@@ -66,7 +65,8 @@ for i in range(1000):
     loss_results.append(loss)
     max_results.append(pos.cpu().data.numpy().max())
     width_results.append(width.cpu().data.numpy().max())
-    if i % 5 == 0:
+    if i % 20 == 0:
+        print(loss)
         plt.cla()
         pos = pos.cpu()
         cos = cos.cpu()

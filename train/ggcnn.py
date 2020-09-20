@@ -50,12 +50,16 @@ class GGCNN(nn.Module):
         :参数 x   :tensors,一次网络输入
         :返回     :tensors，各参数的预测结果
         '''
+        #print('raw_input:{}'.format(x.shape))
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = F.relu(self.convt1(x))
+        #print('trans1:{}'.format(x.shape))
         x = F.relu(self.convt2(x))
+        #print('trans2:{}'.format(x.shape))
         x = F.relu(self.convt3(x))
+        #print('trans3:{}'.format(x.shape))
 
         pos_output = self.pos_output(x)
         cos_output = self.cos_output(x)

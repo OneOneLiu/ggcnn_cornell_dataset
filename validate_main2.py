@@ -21,7 +21,7 @@ from validate.functions import post_process,detect_grasps,max_iou
 from validate.image_pro import Image
 
 #一些训练参数的设定
-batch_size = 16
+batch_size = 32
 batches_per_epoch = 1200
 epochs = 600
 lr = 0.001
@@ -53,7 +53,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
-        for x, y, _ in train_data:
+        for x, y, _ in train_data:#这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
             batch_idx += 1
             if batch_idx >= batches_per_epoch:
                 break
