@@ -65,7 +65,7 @@ for i in range(1000):
     loss_results.append(loss)
     max_results.append(pos.cpu().data.numpy().max())
     width_results.append(width.cpu().data.numpy().max())
-    if i % 20 == 0:
+    if i % 2 == 0:
         print(loss)
         plt.cla()
         pos = pos.cpu()
