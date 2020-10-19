@@ -100,6 +100,25 @@ class Grasp:
         :参数 offset: array [y, x] 要偏移的距离
         """
         self.points += np.array(offset).reshape((1, 2))#这个操作可以保证所有的x坐标都加上x的偏移量，所有的y都加上y的偏移量
+    
+    def rotate(self,angle,center):
+        '''
+        :功能        ：将抓取标注矩形按照给定的旋转角度和旋转中心进行逆时针旋转
+        :参数 angle  ：要旋转的角度（弧度制）
+        :参数 center ：旋转中心
+        '''
+        #定义旋转矩阵
+        R = np.array(
+            [
+                [np.cos(angle), np.sin(angle)],
+                [-1 * np.sin(angle), np.cos(angle)],
+            ]
+        )
+        #处理旋转中心
+        c = np.array(center).reshape((1, 2))
+        #执行旋转运算
+        self.points = ((np.dot(R, (self.points - c).T)).T + c).astype(np.int)
+
 
 class Grasps:
     '''定义一个多抓取框处理类，主要功能是从原始的标注文件中读出多个抓取框并将其构建成多个单一的抓取框Grasp类，同时能够对这些属于同一对象的多个抓取框对象进行一些数据的统一集成处理'''
@@ -204,7 +223,6 @@ class Grasps:
             centers.append(gr.center)
         center = np.mean(np.array(centers),axis = 0).astype(np.uint32)
         return center
-
 
 
 class Grasp_cpaw:
