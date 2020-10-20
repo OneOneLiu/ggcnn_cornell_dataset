@@ -118,6 +118,23 @@ class Grasp:
         c = np.array(center).reshape((1, 2))
         #执行旋转运算
         self.points = ((np.dot(R, (self.points - c).T)).T + c).astype(np.int)
+    
+    def zoom(self,factor,center):
+        '''
+        :功能         :按照指定的缩放因子(factor)和中心点来缩放抓取矩形
+        :参数：factor :缩放因子
+        :参数：center :缩放中心
+        '''
+        #缩放矩阵定义
+        T = np.array(
+            [
+                [1/factor,0],
+                [0,1/factor]
+            ]
+        )
+        c = np.array(center).reshape((1,2))
+        
+        self.points = ((np.dot(T,(self.points - c).T)).T+c).astype(np.int)
 
 
 class Grasps:
