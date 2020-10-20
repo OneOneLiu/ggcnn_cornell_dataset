@@ -17,6 +17,7 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 - 6.optimize 优化部分（实际上这里才是数据增强）
 - images:存放一些笔记中用到的图片
 - support_files:存放一些积累答疑文件
+- problems:遇到的一些问题
 
 
 
