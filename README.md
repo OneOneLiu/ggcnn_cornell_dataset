@@ -21,7 +21,7 @@ Follow the big guy's step to re-implement his excellent ggcnn code,his repositir
 
 
 
-**<后缀为ipynb的文件为相应程序的原始建立过程，后缀为py的文件为与ipynb对应的建立好的完整程序>**
+> **<后缀为ipynb的文件为相应程序的原始建立过程，后缀为py的文件为与ipynb对应的建立好的完整程序>**
 
 
 
