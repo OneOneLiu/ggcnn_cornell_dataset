@@ -16,7 +16,7 @@ import cv2
 import time
 
 #导入自定义包
-from ggcnn import GGCNN
+from ggcnn2 import GGCNN2
 from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
@@ -212,6 +212,6 @@ def visualization(val_data,idx,grasps_pre,grasps_true):
     #cv2.waitKey(1000)
 
 if __name__ == '__main__':
-    net = GGCNN(4)
+    net = GGCNN2(4)
     run(net)
-    torch.save(net,'trained_models/model_v')
+    torch.save(net,'trained_models/model')
