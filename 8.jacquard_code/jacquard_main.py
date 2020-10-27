@@ -26,9 +26,9 @@ from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
 
 #一些训练参数的设定
-batch_size = 16
-batches_per_epoch = 12
-epochs = 6000
+batch_size = 32
+batches_per_epoch = 120
+epochs = 600
 lr = 0.0001
 
 logging.basicConfig(level=logging.INFO)
@@ -60,7 +60,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
-        for x, y, _ in train_data:#这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
+        for x, y, _,_,_ in train_data:#这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
             batch_idx += 1
             if batch_idx >= batches_per_epoch:
                 break
@@ -124,7 +124,7 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
     with torch.no_grad():
         batch_idx = 0
         while batch_idx < (batches_per_epoch-1):
-            for x,y,idx in val_data:
+            for x,y,idx,rot,zoom_factor in val_data:
                 batch_idx += 1
                 
                 xc = x.to(device)
@@ -139,14 +139,14 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
                 q_out,ang_out,width_out = post_process(lossdict['pred']['pos'], lossdict['pred']['cos'], 
                                                        lossdict['pred']['sin'], lossdict['pred']['width'])
                 grasps_pre = detect_grasps(q_out,ang_out,width_out,no_grasp = 1)
-                grasps_true = val_data.dataset.get_raw_grasps(idx)
+                grasps_true = val_data.dataset.get_raw_grasps(idx,rot,zoom_factor)
                 
                 result = 0
                 for grasp_pre in grasps_pre:
                     if max_iou(grasp_pre,grasps_true) > 0.25:
                         result = 1
                         break
-                
+
                 if result:
                     val_result['correct'] += 1
                 else:
@@ -175,7 +175,7 @@ def run():
         os.makedirs(save_folder)
         
     #获取设备
-    max_acc = 0.5
+    max_acc = 0.6
     device = torch.device("cuda:0")
     
     #实例化一个网络

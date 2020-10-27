@@ -9,6 +9,7 @@ from skimage.feature import peak_local_max
 from skimage.filters import gaussian
 from skimage.draw import polygon
 import numpy as np
+import logging#调试
 
 from grasp_pro import Grasp_cpaw
 
@@ -69,17 +70,26 @@ def max_iou(grasp_pre,grasps_true):
             max_iou = iou(grasp_pre,grasp_true)
     return max_iou
 
-def iou(grasp_pre,grasp_true):
+def iou(grasp_pre,grasp_true,angle_threshold = np.pi/6):
     '''
     :功能 :计算两个给定框的iou
-    :参数 : grasp_pre :Grasp对象，单个预测结果中反求出的抓取框
-    :参数 : grasp_true:Grasp对象，单个真实标注抓取框
+    :参数 : grasp_pre      :Grasp对象，单个预测结果中反求出的抓取框
+    :参数 : grasp_true     :Grasp对象，单个真实标注抓取框
+    :参数 : angle_threshold:角度阈值，超过这个角度就认为两者不符
     :返回 : 两者的iou
     '''
+    #超过这个角度阈值就认为这两者不符，下面的计算复杂是为了消除角度方向的影响
+    if abs((grasp_pre.angle - grasp_true.angle + np.pi/2) % np.pi - np.pi/2) > angle_threshold:
+        return 0
     #先提取出两个框的所覆盖区域
     rr1, cc1 = grasp_pre.polygon_coords()#现在是中心点和角度定义的抓取，要转换成四个角点定义的抓取才方便操作
     rr2, cc2 = polygon(grasp_true.points[:, 0], grasp_true.points[:, 1])
     
+    try:#有时候这边返回的rr2是空的，再运行下面的就会报错，在这加个故障处理确保正常运行
+        r_max = max(rr1.max(), rr2.max()) + 1
+        c_max = max(cc1.max(), cc2.max()) + 1
+    except:
+        return 0
     #读取两个框的极限位置
     r_max = max(rr1.max(),rr2.max())+1
     c_max = max(cc1.max(),cc2.max())+1

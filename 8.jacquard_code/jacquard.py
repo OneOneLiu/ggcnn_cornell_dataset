@@ -116,6 +116,17 @@ class Jacquard(torch.utils.data.Dataset):
         
         return pos_img,angle_img,width_img
         
+    def get_raw_grasps(self,idx,rot,zoom):
+        '''
+        :功能       :读取返回指定id的抓取框信息斌进行一系列预处理(裁剪，缩放等)后以Grasps对象的形式返回
+        :参数 idx   :int,要读取的数据id
+        :返回       :Grasps，此id中包含的抓取
+        '''
+        raw_grasps = Grasps.load_from_jacquard_files(self.graspf[idx],scale = self.output_size/1024.0)
+        c = self.output_size//2
+        raw_grasps.rotate(rot,(c,c))
+        raw_grasps.zoom(zoom,(c,c))
+        return raw_grasps
     
     def __getitem__(self,idx):
         #一些参数的设置
@@ -162,7 +173,7 @@ class Jacquard(torch.utils.data.Dataset):
         width_img = np.clip(width_img, 0.0, 150.0)/150.0
         width_img = self.numpy_to_torch(width_img)
         
-        return x,(pos_img,cos_img,sin_img,width_img),idx#这里多返回一个idx，方便后面索引查找真实标注
+        return x,(pos_img,cos_img,sin_img,width_img),idx,rot,zoom_factor#这里多返回idx,rot和zomm_facor参数，方便后面索引查找真实标注，并对真实的标注做同样处理以保证验证的准确性
     #映射类型的数据集，别忘了定义这个函数
     def __len__(self):
         return len(self.graspf)

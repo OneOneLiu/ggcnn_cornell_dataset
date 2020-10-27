@@ -135,6 +135,16 @@ class Grasp:
         c = np.array(center).reshape((1,2))
         
         self.points = ((np.dot(T,(self.points - c).T)).T+c).astype(np.int)
+    
+    def scale(self,factor):
+        '''
+        :功能         :按照指定的缩放因子(factor)来缩放抓取矩形
+        :参数：factor :缩放因子
+        :参数：center :缩放中心
+        '''
+        if factor == 1.0:
+            return
+        self.points *= factor
 
 
 class Grasps:
@@ -163,8 +173,8 @@ class Grasps:
     @classmethod
     def load_from_cornell_files(cls,cornell_grasp_files):
         '''
-        :功能     : 从一个graspf文件中读取载入多个抓取框并构建成为这个类（其实就是从之前的那个get_rectangles改的）
-        :参数 grs : list,包含一个对象中多个抓取框类的列表
+        :功能                     : 从一个graspf文件中读取载入多个抓取框并构建成为这个类（其实就是从之前的那个get_rectangles改的）
+        :参数 cornell_grasp_files : str,目标文件路径
         '''
         grasp_rectangles = []
         with open(cornell_grasp_files,'r') as f:
@@ -182,7 +192,23 @@ class Grasps:
                                str2num(point3)])
                 grasp_rectangles.append(Grasp(grasp_rectangle))#找出各个框后就直接用它构造Grasp对象了
 
-            return cls(grasp_rectangles)#返回实例化的类
+        return cls(grasp_rectangles)#返回实例化的类
+    
+    @classmethod
+    def load_from_jacquard_files(cls,jacquard_grasp_files,scale = 1.0):
+        '''
+        :功能                      : 从一个graspf文件中读取载入多个抓取框并构建成为这个类
+        :参数 jacquard_grasp_files : str,目标文件路径
+        :参数 scale                : flote,抓取框缩放比例因子，因为每幅图像都是resize了的，所以抓取框也必须进行同样的缩放处理才能保证匹配
+        '''
+        grasp_rectangles = []
+        with open(jacquard_grasp_files) as f:
+            for line in f:
+                x, y, theta, w, h = [float(v) for v in line[:-1].split(';')]
+                grasp_rectangles.append(Grasp_cpaw(np.array([x,y]),-theta/180.0*np.pi,h,w).as_gr)#我这边读取的顺序跟GGCNN中的有些不同
+        grasp_rectangles = cls(grasp_rectangles)
+        grasp_rectangles.scale(scale)
+        return grasp_rectangles#返回实例化的类
 
     def generate_img(self,pos = True,angle = True,width = True,shape = (300,300)):
         '''
@@ -280,4 +306,4 @@ class Grasp_cpaw:
              [y2 + self.length/2 * yo, x2 + self.length/2 * xo],
              [y1 + self.length/2 * yo, x1 + self.length/2 * xo],
              ]
-        ).astype(np.float))
+        ).astype(np.float))#搞成整数后返回，后面可视化的时候比较好处理

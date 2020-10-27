@@ -8,7 +8,12 @@ Created on Fri Aug 21 09:23:54 2020
 
 import numpy as np
 from skimage.draw import polygon
+import matplotlib.pyplot as plt
+import cv2
 
+#解决matplotlib中文乱码
+plt.rcParams['font.sans-serif'] = ['KaiTi'] # 指定默认字体
+plt.rcParams['axes.unicode_minus'] = False # 解决保存图像是负号'-'显示为方块的问题
 
 def str2num(point):
     '''
@@ -218,6 +223,22 @@ class Grasps:
                 width_out[cc,rr] = gr.width
 
         return pos_out,angle_out,width_out
+    
+    #调试用
+    def show(self,img,output_size = 300,rotate = 0.0,zoom = 1.0):
+        img = img
+        plt.figure(figsize = (10,10))
+        plt.subplot(121)
+        plt.title('原始图')
+        plt.imshow(img)
+        for gr in self.grs:
+            for i in range(3):
+                cv2.line(img,tuple(gr.points.astype(np.uint32)[i]),tuple(gr.points.astype(np.uint32)[i+1]),5)
+            cv2.line(img,tuple(gr.points.astype(np.uint32)[3]),tuple(gr.points.astype(np.uint32)[0]),5)
+        plt.subplot(122)
+        plt.title('添加了真实标注的图')
+        plt.imshow(img)
+        plt.show()
     @property
     def points(self):
         '''
