@@ -23,8 +23,8 @@ from image_pro import Image
 
 #一些训练参数的设定
 batch_size = 32
-batches_per_epoch = 1200
-epochs = 60
+batches_per_epoch = 120
+epochs = 600
 lr = 0.001
 
 #这部分是直接copy的train_main2.py

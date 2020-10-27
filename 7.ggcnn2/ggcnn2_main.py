@@ -10,11 +10,15 @@ Created on Fri Sep 11 21:29:59 2020
 #导入第三方包
 import torch
 import torch.optim as optim
+from torchsummary import summary
 import numpy as np
-import matplotlib.pyplot as plt
 import cv2
 import time
-
+import datetime
+import os
+import sys
+#summary输出保存之后print函数失灵，但还可以用这个logging来打印输出
+import logging
 #导入自定义包
 from ggcnn2 import GGCNN2
 from cornell_pro import Cornell
@@ -22,10 +26,12 @@ from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
 
 #一些训练参数的设定
-batch_size = 32
+batch_size = 8
 batches_per_epoch = 1200
-epochs = 60
-lr = 0.001
+epochs = 600
+lr = 0.00001
+
+logging.basicConfig(level=logging.INFO)
 
 #这部分是直接copy的train_main2.py
 def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
@@ -41,7 +47,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     :返回: 本epoch的平均损失
     """
     #结果字典，最后返回用
-    results = {
+    results = { 
         'loss': 0,
         'losses': {
         }
@@ -70,7 +76,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             
             #打印一下训练过程
             if batch_idx % 10 == 0:
-                print('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(epoch, batch_idx, loss.item()))
+                logging.info('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(epoch, batch_idx, loss.item()))
             
             #记录总共的损失
             results['loss'] += loss.item()
@@ -152,19 +158,39 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
                 visualization(val_data,idx,grasps_pre,grasps_true)
             
         #print('acc:{}'.format(val_result['correct']/(batches_per_epoch*batch_size)))绝对的计算方法不清楚总数是多少，那就用相对的方法吧
-        print(time.ctime())
-        print('acc:{}'.format(val_result['correct']/(val_result['correct']+val_result['failed'])))
-    return(val_result)
+        logging.info(time.ctime())
+        acc = val_result['correct']/(val_result['correct']+val_result['failed'])
+        logging.info('acc:{}'.format(acc))
+    return(acc)
 
 #这部分是直接copy的train_main2.py  
-def run(net):
+def run():
+    
+    #设置输出文件夹
+    out_dir = 'trained_models/'
+    dt = datetime.datetime.now().strftime('%y%m%d_%H%M')
+    
+    save_folder = os.path.join(out_dir, dt)
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+        
     #获取设备
+    max_acc = 0.5
     device = torch.device("cuda:0")
     
     #实例化一个网络
-    #net = GGCNN(4)
+    net = GGCNN2(4)
     net = net.to(device)
     
+    #保存网络和训练参数信息
+    summary(net,(4,300,300))
+    f = open(os.path.join(save_folder,'arch.txt'),'w')
+    sys.stdout = f
+    summary(net,(4,300,300))
+    sys.stdout = sys.__stdout__
+    f.close()
+    with open(os.path.join(save_folder,'params.txt'),'w') as f:
+        f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
     #准备数据集
     #训练集
     train_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size=300)
@@ -179,8 +205,12 @@ def run(net):
     #开始主循环
     for epoch in range(epochs):
         train_results = train(epoch, net, device, train_dataset, optimizer, batches_per_epoch)
-        print('validating...')
+        logging.info('validating...')
         validate_results = validate(net,device,val_dataset,batches_per_epoch,vis = True)
+        #logging.info('{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
+        if validate_results > max_acc:
+            max_acc = validate_results
+            torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
     return train_results,validate_results
 
 def visualization(val_data,idx,grasps_pre,grasps_true):
@@ -212,6 +242,4 @@ def visualization(val_data,idx,grasps_pre,grasps_true):
     #cv2.waitKey(1000)
 
 if __name__ == '__main__':
-    net = GGCNN2(4)
-    run(net)
-    torch.save(net,'trained_models/model')
+    run()
