@@ -27,9 +27,10 @@ from image_pro import Image
 
 #一些训练参数的设定
 batch_size = 32
-batches_per_epoch = 120
+batches_per_epoch = 1500
 epochs = 600
-lr = 0.0001
+lr = 0.00005
+num_workers = 0
 
 logging.basicConfig(level=logging.INFO)
 
@@ -60,7 +61,11 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
+        logging.info(time.ctime())
+        logging.info('开始载入数据...')#调试
         for x, y, _,_,_ in train_data:#这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
+            logging.info(time.ctime())
+            logging.info('开始这一批的训练')#调试
             batch_idx += 1
             if batch_idx >= batches_per_epoch:
                 break
@@ -75,7 +80,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             loss = lossdict['loss']
             
             #打印一下训练过程
-            if batch_idx % 10 == 0:
+            if batch_idx % 1 == 0:
                 logging.info('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(epoch, batch_idx, loss.item()))
             
             #记录总共的损失
@@ -90,14 +95,16 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            logging.info(time.ctime())
+            logging.info('这一批训练结束')#调试
         
-        #计算总共的平均损失
-        results['loss'] /= batch_idx
+    #计算总共的平均损失
+    results['loss'] /= batch_idx
         
-        #计算各项的平均损失
-        for l in results['losses']:
-            results['losses'][l] /= batch_idx
-        return results
+    #计算各项的平均损失
+    for l in results['losses']:
+        results['losses'][l] /= batch_idx
+    return results
 
 def validate(net,device,val_data,batches_per_epoch,vis = False):
     """
@@ -123,10 +130,12 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
     
     with torch.no_grad():
         batch_idx = 0
-        while batch_idx < (batches_per_epoch-1):
+        while batch_idx < (batches_per_epoch):
             for x,y,idx,rot,zoom_factor in val_data:
+                #logging.info('Validating batch{}'.format(batch_idx))
                 batch_idx += 1
-                
+                if batch_idx >= batches_per_epoch:
+                    break
                 xc = x.to(device)
                 yc = [yy.to(device) for yy in y]
                 
@@ -152,10 +161,10 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
                 else:
                     val_result['failed'] += 1
         
-        if vis:
-            #前面几个迭代过程没有有效的grasp_pre提取出来，所以，len是0，所以，不会有可视化结果显示出来
-            if len(grasps_pre)>0:
-                visualization(val_data,idx,grasps_pre,grasps_true)
+        # if vis:
+        #     #前面几个迭代过程没有有效的grasp_pre提取出来，所以，len是0，所以，不会有可视化结果显示出来
+        #     if len(grasps_pre)>0:
+        #         visualization(val_data,idx,grasps_pre,grasps_true)
             
         #print('acc:{}'.format(val_result['correct']/(batches_per_epoch*batch_size)))绝对的计算方法不清楚总数是多少，那就用相对的方法吧
         logging.info(time.ctime())
@@ -169,7 +178,7 @@ def run():
     #设置输出文件夹
     out_dir = 'trained_models/'
     dt = datetime.datetime.now().strftime('%y%m%d_%H%M')
-    
+
     save_folder = os.path.join(out_dir, dt)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
@@ -194,10 +203,10 @@ def run():
     #准备数据集
     #训练集
     train_data = Jacquard('../jacquard',random_rotate = True,random_zoom = True,output_size=300)
-    train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True)
+    train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True,num_workers = num_workers)
     #验证集
     val_data = Jacquard('../jacquard',random_rotate = True,random_zoom = True,output_size = 300)
-    val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True)
+    val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True,num_workers = num_workers)
     
     #设置优化器
     optimizer = optim.Adam(net.parameters())
@@ -206,8 +215,7 @@ def run():
     for epoch in range(epochs):
         train_results = train(epoch, net, device, train_dataset, optimizer, batches_per_epoch)
         logging.info('validating...')
-        validate_results = validate(net,device,val_dataset,batches_per_epoch,vis = True)
-        logging.info('{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
+        validate_results = validate(net,device,val_dataset,batches_per_epoch/10,vis = True)
         if validate_results > max_acc:
             max_acc = validate_results
             torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))

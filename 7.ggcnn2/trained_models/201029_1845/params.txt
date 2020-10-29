@@ -1,0 +1,4 @@
+batch_size:16
+batches_per_epoch:2
+epochs:2
+lr:5e-05

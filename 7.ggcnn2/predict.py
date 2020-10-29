@@ -18,8 +18,8 @@ from functions import post_process,detect_grasps,max_iou
 batch_size = 1
 
 #建立数据集
-#dataset = Jacquard('../jacquard',random_rotate = True)
-dataset = Cornell('../cornell',random_rotate = True,random_zoom = True)
+dataset = Jacquard('../jacquard',random_rotate = True)
+#dataset = Cornell('../cornell',random_rotate = True,random_zoom = True)
 pre_dataset = torch.utils.data.DataLoader(dataset,batch_size = batch_size,shuffle = True)
 
 for x,y,idx,rot,zoom in pre_dataset:
@@ -46,10 +46,10 @@ for grasp_pre in grasps_pre:
     
 img = dataset.get_rgb(int(idx[0]),float(rot),float(zoom),normalize = False)
 
-for gr in grasps_true.grs:
-    for i in range(3):
-        cv2.line(img,tuple(gr.points.astype(np.uint32)[i]),tuple(gr.points.astype(np.uint32)[i+1]),(255,255,0),3)
-    cv2.line(img,tuple(gr.points.astype(np.uint32)[3]),tuple(gr.points.astype(np.uint32)[0]),(255,255,0),3)
+# for gr in grasps_true.grs:
+#     for i in range(3):
+#         cv2.line(img,tuple(gr.points.astype(np.uint32)[i]),tuple(gr.points.astype(np.uint32)[i+1]),(255,255,0),3)
+#     cv2.line(img,tuple(gr.points.astype(np.uint32)[3]),tuple(gr.points.astype(np.uint32)[0]),(255,255,0),3)
 
 gr = grasps_pre[0].as_gr
 for i in range(3):
