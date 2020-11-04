@@ -22,23 +22,18 @@ import logging
 #导入自定义包
 from ggcnn2 import GGCNN2
 from cornell_pro import Cornell
+from jacquard import Jacquard
 from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
 
 #一些训练参数的设定
-batch_size = 64
+batch_size = 32
 batches_per_epoch = 20
-epochs = 20
+epochs = 3
 lr = 0.00005
-num_workers = 0
 val_batches = 250
 
 logging.basicConfig(level=logging.INFO)
-
-time2_1s = []
-time3_2s = []
-time1_3s = []
-time2_3s = []
 
 #这部分是直接copy的train_main2.py
 def train(epoch,net,device,train_data,optimizer,batches_per_epoch,time3 = 0):
@@ -193,7 +188,7 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
     return(acc)
 
 #这部分是直接copy的train_main2.py  
-def run():
+def run(num_workers):
     
     #设置输出文件夹
     out_dir = 'trained_models/'
@@ -204,22 +199,22 @@ def run():
         os.makedirs(save_folder)
         
     #获取设备
-    max_acc = 0.5
+    max_acc = 0.3
     device = torch.device("cuda:0")
     
     #实例化一个网络
     net = GGCNN2(4)
     net = net.to(device)
     
-    #保存网络和训练参数信息
-    summary(net,(4,300,300))
-    f = open(os.path.join(save_folder,'arch.txt'),'w')
-    sys.stdout = f
-    summary(net,(4,300,300))
-    sys.stdout = sys.__stdout__
-    f.close()
-    with open(os.path.join(save_folder,'params.txt'),'w') as f:
-        f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
+    # #保存网络和训练参数信息
+    # summary(net,(4,300,300))
+    # f = open(os.path.join(save_folder,'arch.txt'),'w')
+    # sys.stdout = f
+    # summary(net,(4,300,300))
+    # sys.stdout = sys.__stdout__
+    # f.close()
+    # with open(os.path.join(save_folder,'params.txt'),'w') as f:
+    #     f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
     #准备数据集
     #训练集
     train_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size=300)
@@ -267,10 +262,10 @@ def visualization(val_data,idx,grasps_pre,grasps_true):
     for i in range(3):
         img = cv2.line(a,tuple(a_points[i]),tuple(a_points[i+1]),color1 if i % 2 == 0 else color2,1)
     img = cv2.line(a,tuple(a_points[3]),tuple(a_points[0]),color2,1)
-    
+
     color1 = (0,0,0)
     color2 = (0,255,0)
-    
+
     for b_point in b_points:
         for i in range(3):
             img = cv2.line(a,tuple(b_point[i]),tuple(b_point[i+1]),color1 if i % 2 == 0 else color2,1)
@@ -280,4 +275,21 @@ def visualization(val_data,idx,grasps_pre,grasps_true):
     #cv2.waitKey(1000)
 
 if __name__ == '__main__':
-    time2_1s,time3_2s,time1_3s,time2_3s = run()
+    time_result = {}
+
+    for i in range(0,33):
+        time2_1s = []
+        time3_2s = []
+        time1_3s = []
+        time2_3s = []
+        print('num:',i)
+        num_workers = i
+        time2_1s,time3_2s,time1_3s,time2_3s = run(num_workers)
+        dict_cache = {
+            'time2_1s':time2_1s,
+            'time3_2s':time3_2s,
+            'time1_3s':time1_3s,
+            'time2_3s':time2_3s
+        }
+        time_result[i] = dict_cache
+        print(time_result[i])

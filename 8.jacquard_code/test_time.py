@@ -21,21 +21,22 @@ import sys
 import logging
 #导入自定义包
 from ggcnn2 import GGCNN2
+from cornell_pro import Cornell
 from jacquard import Jacquard
 from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
 
 #一些训练参数的设定
-batch_size = 32
-batches_per_epoch = 1500
-epochs =2
+batch_size = 64
+batches_per_epoch = 20
+epochs = 5
 lr = 0.00005
-num_workers = 7
+val_batches = 250
 
 logging.basicConfig(level=logging.INFO)
 
 #这部分是直接copy的train_main2.py
-def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
+def train(epoch,net,device,train_data,optimizer,batches_per_epoch,time3 = 0):
     """
     :功能: 执行一个训练epoch
     :参数: epoch             : 当前所在的epoch数
@@ -58,21 +59,35 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     net.train()
     
     batch_idx = 0
-    
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
-        logging.info(time.ctime())
-        logging.info('开始载入数据...')#调试
+        time1 = time.time()
+        if time3:
+        #logging.info('time2-time1')
+        #logging.info(time2-time1)
+            time1_3s.append(time1-time3)
+        #logging.info('开始载入数据...')#调试
         for x, y, _,_,_ in train_data:#这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
-            #logging.info(time.ctime())
+            time2 = time.time()
+            if time1:
+                #logging.info('time2-time1')
+                #logging.info(time2-time1)
+                time2_1s.append(time2-time1)
+                time1 = 0#循环内部time1不会改变，就不要再去读了
+            #logging.info('开始这一批的训练')#调试
+            if time3:
+                #logging.info('time2-time3')
+                #logging.info(time2-time3)
+                time2_3s.append(time2-time3)
             #logging.info('开始这一批的训练')#调试
             batch_idx += 1
-            if batch_idx >= batches_per_epoch:
+            if batch_idx > batches_per_epoch:
                 break
+            #logging.info(time.ctime())
             
             #将数据传到GPU
-            xc = x.to(device)
-            yc = [yy.to(device) for yy in y]
+            xc = x.to(device,non_blocking=True)
+            yc = [yy.to(device,non_blocking=True) for yy in y]
             
             lossdict = net.compute_loss(xc,yc)
             
@@ -80,7 +95,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             loss = lossdict['loss']
             
             #打印一下训练过程
-            if batch_idx % 100 == 0:
+            if batch_idx % 10 == 0:
                 logging.info('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(epoch, batch_idx, loss.item()))
             
             #记录总共的损失
@@ -95,16 +110,18 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            #logging.info(time.ctime())
+            time3 = time.time()
+            #info('time3-time2')
+            #logging.info(time3-time2)
+            time3_2s.append(time3-time2)
             #logging.info('这一批训练结束')#调试
-        
     #计算总共的平均损失
     results['loss'] /= batch_idx
         
     #计算各项的平均损失
     for l in results['losses']:
         results['losses'][l] /= batch_idx
-    return results
+    return results,time2_1s,time3_2s,time1_3s,time2_3s,time3
 
 def validate(net,device,val_data,batches_per_epoch,vis = False):
     """
@@ -130,14 +147,12 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
     
     with torch.no_grad():
         batch_idx = 0
-        while batch_idx < (batches_per_epoch):
+        while batch_idx < (batches_per_epoch-1):
             for x,y,idx,rot,zoom_factor in val_data:
-                #logging.info('Validating batch{}'.format(batch_idx))
                 batch_idx += 1
-                if batch_idx >= batches_per_epoch:
-                    break
-                xc = x.to(device)
-                yc = [yy.to(device) for yy in y]
+                
+                xc = x.to(device,non_blocking=True)
+                yc = [yy.to(device,non_blocking=True) for yy in y]
                 
                 lossdict = net.compute_loss(xc, yc)
                  
@@ -155,30 +170,30 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
                     if max_iou(grasp_pre,grasps_true) > 0.25:
                         result = 1
                         break
-
+                
                 if result:
                     val_result['correct'] += 1
                 else:
                     val_result['failed'] += 1
         
-        # if vis:
-        #     #前面几个迭代过程没有有效的grasp_pre提取出来，所以，len是0，所以，不会有可视化结果显示出来
-        #     if len(grasps_pre)>0:
-        #         visualization(val_data,idx,grasps_pre,grasps_true)
+        if vis:
+            #前面几个迭代过程没有有效的grasp_pre提取出来，所以，len是0，所以，不会有可视化结果显示出来
+            if len(grasps_pre)>0:
+                visualization(val_data,idx,grasps_pre,grasps_true)
             
         #print('acc:{}'.format(val_result['correct']/(batches_per_epoch*batch_size)))绝对的计算方法不清楚总数是多少，那就用相对的方法吧
-        logging.info(time.ctime())
+        #logging.info(time.ctime())
         acc = val_result['correct']/(val_result['correct']+val_result['failed'])
         logging.info('acc:{}'.format(acc))
     return(acc)
 
 #这部分是直接copy的train_main2.py  
-def run():
+def run(num_workers):
     
     #设置输出文件夹
     out_dir = 'trained_models/'
     dt = datetime.datetime.now().strftime('%y%m%d_%H%M')
-
+    
     save_folder = os.path.join(out_dir, dt)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
@@ -191,38 +206,46 @@ def run():
     net = GGCNN2(4)
     net = net.to(device)
     
-    #保存网络和训练参数信息
-    summary(net,(4,300,300))
-    f = open(os.path.join(save_folder,'arch.txt'),'w')
-    sys.stdout = f
-    summary(net,(4,300,300))
-    sys.stdout = sys.__stdout__
-    f.close()
-    with open(os.path.join(save_folder,'params.txt'),'w') as f:
-        f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
+    # #保存网络和训练参数信息
+    # summary(net,(4,300,300))
+    # f = open(os.path.join(save_folder,'arch.txt'),'w')
+    # sys.stdout = f
+    # summary(net,(4,300,300))
+    # sys.stdout = sys.__stdout__
+    # f.close()
+    # with open(os.path.join(save_folder,'params.txt'),'w') as f:
+    #     f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
     #准备数据集
     #训练集
-    logging.info('开始构建数据集:{}'.format(time.ctime()))
     train_data = Jacquard('../jacquard',random_rotate = True,random_zoom = True,output_size=300)
-    train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True,num_workers = num_workers)
-    logging.info('准备完了第一个数据集:{}'.format(time.ctime()))
+    train_dataset = torch.utils.data.DataLoader(
+        train_data,
+        batch_size = batch_size,
+        shuffle = True,
+        num_workers = num_workers,
+        pin_memory = True)
     #验证集
-    val_data = Jacquard('../jacquard',random_rotate = True,random_zoom = True,output_size = 300)
-    val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True,num_workers = num_workers)
-    logging.info('准备完了第二个数据集:{}'.format(time.ctime()))
-    
+    val_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size = 300)
+    val_dataset = torch.utils.data.DataLoader(
+        val_data,
+        batch_size = 1,
+        shuffle = True,
+        num_workers = num_workers)
     #设置优化器
     optimizer = optim.Adam(net.parameters())
     
     #开始主循环
+    time3 = 0
     for epoch in range(epochs):
-        train_results = train(epoch, net, device, train_dataset, optimizer, batches_per_epoch)
-        logging.info('validating...')
-        validate_results = validate(net,device,val_dataset,batches_per_epoch/10,vis = True)
-        if validate_results > max_acc:
-            max_acc = validate_results
-            torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
-    return train_results,validate_results
+        train_results,time2_1s,time3_2s,time1_3s,time2_3s,time3= train(epoch, net, device, train_dataset, optimizer, batches_per_epoch,time3 = time3)
+        #logging.info('validating...')
+        #validate_results = validate(net,device,val_dataset,batches_per_epoch/10,vis = True)
+        #logging.info('{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
+        # if validate_results > max_acc:
+        #     max_acc = validate_results
+        #     torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
+    return time2_1s,time3_2s,time1_3s,time2_3s#调试
+    #return train_results,validate_results,
 
 def visualization(val_data,idx,grasps_pre,grasps_true):
     #最开始的几个迭代过程中不会有q_img值足够大的预测出现，所以，此时提出不出有效的抓取，进而是不会有visuaization出现的
@@ -240,10 +263,10 @@ def visualization(val_data,idx,grasps_pre,grasps_true):
     for i in range(3):
         img = cv2.line(a,tuple(a_points[i]),tuple(a_points[i+1]),color1 if i % 2 == 0 else color2,1)
     img = cv2.line(a,tuple(a_points[3]),tuple(a_points[0]),color2,1)
-    
+
     color1 = (0,0,0)
     color2 = (0,255,0)
-    
+
     for b_point in b_points:
         for i in range(3):
             img = cv2.line(a,tuple(b_point[i]),tuple(b_point[i+1]),color1 if i % 2 == 0 else color2,1)
@@ -253,4 +276,21 @@ def visualization(val_data,idx,grasps_pre,grasps_true):
     #cv2.waitKey(1000)
 
 if __name__ == '__main__':
-    run()
+    time_result = {}
+
+    for i in range(0,33):
+        time2_1s = []
+        time3_2s = []
+        time1_3s = []
+        time2_3s = []
+        print('num:',i)
+        num_workers = i
+        time2_1s,time3_2s,time1_3s,time2_3s = run(num_workers)
+        dict_cache = {
+            'time2_1s':time2_1s,
+            'time3_2s':time3_2s,
+            'time1_3s':time1_3s,
+            'time2_3s':time2_3s
+        }
+        time_result[i] = dict_cache
+        print(time_result[i])
