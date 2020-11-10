@@ -11,4 +11,4 @@ scipy                     1.5.0
 tensorboard               1.8.0
 tensorboardx              2.0
 torchvision               0.6.1
-
+imagecodecs               2020.5.3
