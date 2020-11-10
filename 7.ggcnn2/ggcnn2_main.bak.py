@@ -26,7 +26,7 @@ from image_pro import Image
 #一些训练参数的设定
 batch_size = 4
 batches_per_epoch = 1000
-epochs = 30
+epochs = 100
 lr = 0.00005
 num_workers = 7
 val_batches = 250
@@ -193,7 +193,6 @@ def visualization(val_data,idx,grasps_pre,grasps_true):
     #cv2.waitKey(1000)
 
 def run():
-    print('start run...\n')
     #设置输出文件夹
     out_dir = 'trained_models/'
     dt = datetime.datetime.now().strftime('%y%m%d_%H%M')
@@ -222,14 +221,14 @@ def run():
         f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
     #准备数据集
     #训练集
-    train_data = Cornell('../cornell',random_rotate = False,random_zoom = False,output_size=300)
+    train_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size=300)
     train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True,num_workers = num_workers)
     #验证集
-    val_data = Cornell('../cornell',random_rotate = False,random_zoom = False,output_size = 300)
+    val_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size = 300)
     val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True,num_workers = num_workers)
 
     #设置优化器
-    optimizer = optim.Adam(net.parameters())
+    optimizer = optim.Adam(net.parameters(),lr = lr)
     
     #开始主循环
     for epoch in range(epochs):
