@@ -81,14 +81,15 @@ class Cornell(torch.utils.data.Dataset):
         
         return center,left,top
     
-    def get_rgb(self,idx,rot=0, zoom=1.0):
+    def get_rgb(self,idx,rot=0, zoom=1.0,normalize = True):
         '''
         :功能     :读取返回指定id的rgb图像
         :参数 idx :int,要读取的数据id
         :返回     :ndarray,处理好后的rgb图像
         '''
         rgb_img = Image.from_file(self.rgbf[idx])
-        rgb_img.normalize()
+        if normalize:
+            rgb_img.normalize()
         center,left,top = self._get_crop_attrs(idx)
         #先旋转后裁剪再缩放最后resize
         rgb_img.rotate(rot,center)

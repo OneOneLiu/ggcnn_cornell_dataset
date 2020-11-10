@@ -75,7 +75,7 @@ class Jacquard(torch.utils.data.Dataset):
             return torch.from_numpy(s.astype(np.float32))
         
     
-    def get_rgb(self,idx,rot = 0,zoom = 1.0,normalise = True):
+    def get_rgb(self,idx,rot = 0,zoom = 1.0,normalize = True):
         '''
         :功能     :读取返回指定id的rgb图像
         :参数 idx :int,要读取的数据id
@@ -86,7 +86,7 @@ class Jacquard(torch.utils.data.Dataset):
         rgb_img.zoom(zoom)
         #注意，这里暂且不论是否zoom，图像是直接由（1024X1024）resize成为了(300X300)的，相应的抓取框标注也必须进行同样程度的“resize”或者说缩放（scale）才行
         rgb_img.resize((self.output_size, self.output_size))
-        if normalise:
+        if normalize:
             rgb_img.normalize()
             #rgb_img.img = rgb_img.img.transpose((2, 0, 1))
             #这里还有一句transpose没写，先不管

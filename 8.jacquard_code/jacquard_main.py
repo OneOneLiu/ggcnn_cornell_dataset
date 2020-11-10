@@ -11,26 +11,30 @@ Created on Fri Sep 11 21:29:59 2020
 import torch
 import torch.optim as optim
 from torchsummary import summary
+import tensorboardX
 import numpy as np
 import cv2
 import time
 import datetime
 import os
-import sys
 #summary输出保存之后print函数失灵，但还可以用这个logging来打印输出
 import logging
 #导入自定义包
 from ggcnn2 import GGCNN2
+from ggcnn import GGCNN
 from jacquard import Jacquard
+from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
 
 #一些训练参数的设定
-batch_size = 32
-batches_per_epoch = 1500
-epochs =2
-lr = 0.00005
+batch_size = 8
+batches_per_epoch = 1000
+epochs = 50
+lr = 0.001
 num_workers = 7
+val_batches = 250
+split = 0.9
 
 logging.basicConfig(level=logging.INFO)
 
@@ -61,8 +65,8 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
-        logging.info(time.ctime())
-        logging.info('开始载入数据...')#调试
+        #logging.info(time.ctime())
+        #logging.info('开始载入数据...')#调试
         for x, y, _,_,_ in train_data:#这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
             #logging.info(time.ctime())
             #logging.info('开始这一批的训练')#调试
@@ -121,7 +125,8 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
         'correct':0,
         'failed':0,
         'loss':0,
-        'losses':{}
+        'losses':{},
+        'acc':0.0
         }
     #设置网络进入验证模式
     net.eval()
@@ -144,6 +149,12 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
                 loss = lossdict['loss']
                 
                 val_result['loss'] += loss.item()/length
+                
+                #记录各项的单独损失
+                for ln, l in lossdict['losses'].items():
+                    if ln not in val_result['losses']:
+                        val_result['losses'][ln] = 0
+                    val_result['losses'][ln] += l.item()/length
                 
                 q_out,ang_out,width_out = post_process(lossdict['pred']['pos'], lossdict['pred']['cos'], 
                                                        lossdict['pred']['sin'], lossdict['pred']['width'])
@@ -170,7 +181,8 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
         logging.info(time.ctime())
         acc = val_result['correct']/(val_result['correct']+val_result['failed'])
         logging.info('acc:{}'.format(acc))
-    return(acc)
+        val_result['acc'] = acc
+    return(val_result)
 
 #这部分是直接copy的train_main2.py  
 def run():
@@ -178,7 +190,8 @@ def run():
     #设置输出文件夹
     out_dir = 'trained_models/'
     dt = datetime.datetime.now().strftime('%y%m%d_%H%M')
-
+    net_desc = '{}_tb'.format(dt)
+    
     save_folder = os.path.join(out_dir, dt)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
@@ -188,40 +201,53 @@ def run():
     device = torch.device("cuda:0")
     
     #实例化一个网络
-    net = GGCNN2(4)
+    net = GGCNN(1)
     net = net.to(device)
     
     #保存网络和训练参数信息
-    summary(net,(4,300,300))
-    f = open(os.path.join(save_folder,'arch.txt'),'w')
-    sys.stdout = f
-    summary(net,(4,300,300))
-    sys.stdout = sys.__stdout__
-    f.close()
+    summary(net,(1,300,300))
+    # f = open(os.path.join(save_folder,'arch.txt'),'w')
+    # sys.stdout = f
+    # summary(net,(4,300,300))
+    # sys.stdout = sys.__stdout__
+    # f.close()
     with open(os.path.join(save_folder,'params.txt'),'w') as f:
         f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
     #准备数据集
     #训练集
-    logging.info('开始构建数据集:{}'.format(time.ctime()))
-    train_data = Jacquard('../jacquard',random_rotate = True,random_zoom = True,output_size=300)
+    #logging.info('开始构建数据集:{}'.format(time.ctime()))
+    train_data = Cornell('../cornell',include_rgb = False, start = 0.0,end = split,random_rotate = False,random_zoom = False,output_size=300)
     train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True,num_workers = num_workers)
-    logging.info('准备完了第一个数据集:{}'.format(time.ctime()))
+    #logging.info('准备完了第一个数据集:{}'.format(time.ctime()))
     #验证集
-    val_data = Jacquard('../jacquard',random_rotate = True,random_zoom = True,output_size = 300)
+    val_data = Cornell('../cornell',include_rgb = False, start = split,end = 1.0,random_rotate = False,random_zoom = False,output_size = 300)
     val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True,num_workers = num_workers)
-    logging.info('准备完了第二个数据集:{}'.format(time.ctime()))
+    #logging.info('准备完了第二个数据集:{}'.format(time.ctime()))
     
     #设置优化器
-    optimizer = optim.Adam(net.parameters())
-    
+    optimizer = optim.Adam(net.parameters(),lr = lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5,verbose = True)
+    #设置tensorboardX
+    tb = tensorboardX.SummaryWriter(os.path.join(save_folder, net_desc))
     #开始主循环
     for epoch in range(epochs):
+        logging.info('current lr={}'.format(optimizer.defaults['lr']))
         train_results = train(epoch, net, device, train_dataset, optimizer, batches_per_epoch)
+        scheduler.step()
+        #添加总的loss到tb
+        tb.add_scalar('loss/train_loss', train_results['loss'], epoch)
+        #添加各项的单独loss到tb
+        for n, l in train_results['losses'].items():
+            tb.add_scalar('train_loss/' + n, l, epoch)
         logging.info('validating...')
-        validate_results = validate(net,device,val_dataset,batches_per_epoch/10,vis = True)
-        if validate_results > max_acc:
-            max_acc = validate_results
-            torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
+        validate_results = validate(net,device,val_dataset,batches_per_epoch = val_batches,vis = True)
+        tb.add_scalar('loss/IOU', validate_results['correct'] / (validate_results['correct'] + validate_results['failed']), epoch)
+        tb.add_scalar('loss/val_loss', validate_results['loss'], epoch)
+        for n, l in validate_results['losses'].items():
+            tb.add_scalar('val_loss/' + n, l, epoch)
+        if validate_results['acc'] > max_acc:
+            max_acc = validate_results['acc']
+            torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results['acc'])[0:5],epoch,batch_size))
     return train_results,validate_results
 
 def visualization(val_data,idx,grasps_pre,grasps_true):

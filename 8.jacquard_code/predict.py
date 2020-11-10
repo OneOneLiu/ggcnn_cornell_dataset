@@ -18,8 +18,8 @@ from functions import post_process,detect_grasps,max_iou
 batch_size = 1
 
 #建立数据集
-dataset = Jacquard('../jacquard',random_rotate = True)
-#dataset = Cornell('../cornell',random_rotate = True,random_zoom = True)
+# dataset = Jacquard('../jacquard',random_rotate = True)
+dataset = Cornell('../cornell',random_rotate = True,random_zoom = True)
 pre_dataset = torch.utils.data.DataLoader(dataset,batch_size = batch_size,shuffle = True)
 
 for x,y,idx,rot,zoom in pre_dataset:
@@ -30,7 +30,7 @@ for x,y,idx,rot,zoom in pre_dataset:
 #载入训练好的网络
 device = torch.device("cuda:0")
 pre_x = pre_x.to(device)
-net = torch.load('trained_models/201027_1956/model0.668_epoch30_batch_8')
+net = torch.load('trained_models/201108_0954/model0.489_epoch90_batch_2')
 pos_img,cos_img,sin_img,width_img= net(pre_x)
 
 q_out,ang_out,wid_out = post_process(pos_img,cos_img,sin_img,width_img)
