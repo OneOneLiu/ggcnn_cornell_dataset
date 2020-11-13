@@ -73,8 +73,8 @@ class Grasp:
         :返回 1darray  : 本类所包含抓取框的旋转角度（弧度值）
         ''' 
         
-        dx = self.points[0][0] - self.points[1][0]
-        dy = self.points[0][1] - self.points[1][1]
+        dx = self.points[1][0] - self.points[0][0]
+        dy = self.points[1][1] - self.points[0][1]
         
         return (np.arctan2(-dy,dx) + np.pi/2) % np.pi - np.pi/2
     
@@ -275,14 +275,14 @@ class Grasp_cpaw:
     理比较方方便（比如将矩形的宽度缩小三倍），但是最终的绘制还是要通过角点坐标来实现，所以，里面还要有一个能够根据
     这几个参数反求角点坐标的函数
     '''
-    def __init__(self,center, angle, length=60, width=30):
+    def __init__(self,center, angle, width=60, length=30):
         '''
         :功能       :类初始化函数，进行参数传递
         :参数       :这些参数是啥很明显了吧，就不再赘述了
         '''
         self.center = center
         self.angle = angle   # 正角度表示沿水平方向逆时针旋转
-        self.length = length
+        self.length = length 
         self.width = width
         
     @property
