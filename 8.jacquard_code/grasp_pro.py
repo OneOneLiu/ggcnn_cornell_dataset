@@ -84,7 +84,7 @@ class Grasp:
         :参数 shape    : tuple, optional.Image shape which is used to determine the maximum extent of output pixel coordinates.
         :返回 1darray  : rr,cc 本抓取框内部点的行列坐标
         """
-        return polygon(self.points[:, 0], self.points[:, 1], shape)
+        return polygon(self.points[:, 1], self.points[:, 0], shape)
     
     def compact_polygon_coords(self,shape):
         '''
@@ -237,11 +237,11 @@ class Grasps:
             rr,cc = gr.compact_polygon_coords(shape)#shape的指定还是很重要的，可以考虑图像边界
             
             if pos:
-                pos_out[cc,rr] = 1.0
+                pos_out[rr,cc] = 1.0
             if angle:
-                angle_out[cc,rr] = gr.angle
+                angle_out[rr,cc] = gr.angle
             if width:
-                width_out[cc,rr] = gr.width
+                width_out[rr,cc] = gr.width
 
         return pos_out,angle_out,width_out
     @property

@@ -24,7 +24,7 @@ def post_process(pos_img,cos_img,sin_img,width_img):
     '''
     q_img = pos_img.cpu().data.numpy().squeeze()
     ang_img = (torch.atan2(sin_img, cos_img) / 2.0).cpu().data.numpy().squeeze()
-    width_img = width_img.cpu().data.numpy().squeeze()
+    width_img = width_img.cpu().data.numpy().squeeze() * 150.0
     
     #一定注意，此处Guassian滤波时，batch_size一定要是1才行，这个滤波函数不支持一次输入多个样本
     q_img_g = gaussian(q_img, 2.0, preserve_range=True)
@@ -43,15 +43,17 @@ def detect_grasps(q_out,ang_out,wid_out = None,no_grasp = 1):
     :返回          :list,包含多个grasp_cpaw对象的列表
     '''
     grasps_pre = []
-    local_max = peak_local_max(q_out, min_distance=20, threshold_abs=0.1,num_peaks = 1)
+    local_max = peak_local_max(q_out, min_distance=20, threshold_abs=0.2,num_peaks = no_grasp)
     for grasp_point_array in local_max:
         grasp_point = tuple(grasp_point_array)
+
         grasp_angle = ang_out[grasp_point]
-        grasp_width = wid_out[grasp_point]
-        g = Grasp_cpaw(grasp_point,grasp_angle,grasp_width)
+
+        g = Grasp_cpaw(grasp_point,grasp_angle)
         if wid_out is not None:
-            g.width = wid_out[grasp_point]*150
+            g.width = wid_out[grasp_point]
             g.length = g.width/2
+
         grasps_pre.append(g)
 
     return grasps_pre
@@ -66,8 +68,8 @@ def max_iou(grasp_pre,grasps_true):
     grasp_pre = grasp_pre.as_gr
     max_iou = 0
     for grasp_true in grasps_true.grs:
-        if iou(grasp_pre,grasp_true) > max_iou:
-            max_iou = iou(grasp_pre,grasp_true)
+        Iou = iou(grasp_pre,grasp_true)
+        max_iou = max(max_iou,Iou)
     return max_iou
 
 def iou(grasp_pre,grasp_true,angle_threshold = np.pi/6):
@@ -82,18 +84,15 @@ def iou(grasp_pre,grasp_true,angle_threshold = np.pi/6):
     if abs((grasp_pre.angle - grasp_true.angle + np.pi/2) % np.pi - np.pi/2) > angle_threshold:
         return 0
     #先提取出两个框的所覆盖区域
-    rr1, cc1 = grasp_pre.polygon_coords()#现在是中心点和角度定义的抓取，要转换成四个角点定义的抓取才方便操作
-    rr2, cc2 = polygon(grasp_true.points[:, 0], grasp_true.points[:, 1])
+    cc1, rr1 = grasp_pre.polygon_coords()
+    cc2, rr2 = polygon(grasp_true.points[:, 1], grasp_true.points[:, 0])
     
     try:#有时候这边返回的rr2是空的，再运行下面的就会报错，在这加个故障处理确保正常运行
         r_max = max(rr1.max(), rr2.max()) + 1
         c_max = max(cc1.max(), cc2.max()) + 1
     except:
         return 0
-    #读取两个框的极限位置
-    r_max = max(rr1.max(),rr2.max())+1
-    c_max = max(cc1.max(),cc2.max())+1
-    
+
     #根据最大的边界来确定蒙版画布大小
     canvas = np.zeros((r_max,c_max))
     canvas[rr1,cc1] += 1
@@ -103,7 +102,7 @@ def iou(grasp_pre,grasp_true,angle_threshold = np.pi/6):
     
     if union == 0:
         return 0
-    
+
     intersection = np.sum(canvas == 2)
     #print(intersection/union)
     return intersection/union
