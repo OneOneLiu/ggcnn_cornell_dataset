@@ -48,7 +48,7 @@ class Image:
         :参数 top_left     :ndarray,要裁剪区域的左上角点坐标
         :参数 bottom_right :ndarray,要裁剪区域的右下角点坐标
         '''
-        self.img = self.img[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
+        self.img = self.img[top_left[0]:bottom_right[0], top_left[1]:bottom_right[1]]
     
     def resize(self,shape):
         '''
@@ -66,7 +66,7 @@ class Image:
         :参数 center    :旋转中心像素坐标，如不指定则默认为图像中心像素坐标
         '''
         if center is not None:
-            center = (int(center[0]),int(center[1]))#不管你原来什么数据类型，这里都变成tuple,而且这边不转整型的话后面旋转就会出错，所以转换了一下
+            center = (int(center[1]),int(center[0]))#不管你原来什么数据类型，这里都变成tuple,而且这边不转整型的话后面旋转就会出错，所以转换了一下
         self.img = rotate(self.img,angle/np.pi*180,center = center,mode = 'symmetric',preserve_range = True).astype(self.img.dtype)
     
     def zoom(self,factor):

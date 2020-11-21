@@ -46,7 +46,6 @@ def detect_grasps(q_out,ang_out,wid_out = None,no_grasp = 1):
     local_max = peak_local_max(q_out, min_distance=20, threshold_abs=0.2,num_peaks = no_grasp)
     for grasp_point_array in local_max:
         grasp_point = tuple(grasp_point_array)
-
         grasp_angle = ang_out[grasp_point]
 
         g = Grasp_cpaw(grasp_point,grasp_angle)
@@ -84,9 +83,8 @@ def iou(grasp_pre,grasp_true,angle_threshold = np.pi/6):
     if abs((grasp_pre.angle - grasp_true.angle + np.pi/2) % np.pi - np.pi/2) > angle_threshold:
         return 0
     #先提取出两个框的所覆盖区域
-    cc1, rr1 = grasp_pre.polygon_coords()
-    cc2, rr2 = polygon(grasp_true.points[:, 1], grasp_true.points[:, 0])
-    
+    rr1, cc1 = grasp_pre.polygon_coords()
+    rr2, cc2 = polygon(grasp_true.points[:, 0], grasp_true.points[:, 1])
     try:#有时候这边返回的rr2是空的，再运行下面的就会报错，在这加个故障处理确保正常运行
         r_max = max(rr1.max(), rr2.max()) + 1
         c_max = max(cc1.max(), cc2.max()) + 1
@@ -97,7 +95,7 @@ def iou(grasp_pre,grasp_true,angle_threshold = np.pi/6):
     canvas = np.zeros((r_max,c_max))
     canvas[rr1,cc1] += 1
     canvas[rr2,cc2] += 1
-    
+
     union = np.sum(canvas > 0)
     
     if union == 0:

@@ -12,8 +12,7 @@ import torch
 import torch.optim as optim
 from torchsummary import summary
 import tensorboardX
-import numpy as np
-import cv2
+
 import time
 import datetime
 import os
@@ -25,16 +24,21 @@ from ggcnn import GGCNN
 from jacquard import Jacquard
 from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
-from image_pro import Image
 
 #一些训练参数的设定
 batch_size = 8
-batches_per_epoch = 1000
 epochs = 50
-lr = 0.001
-num_workers = 7
+batches_per_epoch = 1000
 val_batches = 250
+lr = 0.001
+
+use_depth = True
+use_rgb = True
+rotate = True
+zoom = True
+
 split = 0.9
+num_workers = 7
 
 logging.basicConfig(level=logging.INFO)
 
@@ -65,15 +69,11 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
-        #logging.info(time.ctime())
-        #logging.info('开始载入数据...')#调试
         for x, y, _,_,_ in train_data:#这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
-            #logging.info(time.ctime())
-            #logging.info('开始这一批的训练')#调试
             batch_idx += 1
             if batch_idx >= batches_per_epoch:
                 break
-            
+
             #将数据传到GPU
             xc = x.to(device)
             yc = [yy.to(device) for yy in y]
@@ -99,8 +99,6 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            #logging.info(time.ctime())
-            #logging.info('这一批训练结束')#调试
         
     #计算总共的平均损失
     results['loss'] /= batch_idx
@@ -108,9 +106,10 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     #计算各项的平均损失
     for l in results['losses']:
         results['losses'][l] /= batch_idx
+
     return results
 
-def validate(net,device,val_data,batches_per_epoch,vis = False):
+def validate(net,device,val_data,batches_per_epoch):
     """
     :功能: 在给定的验证集上验证给定模型的是被准确率并返回
     :参数: net              : torch.model,要验证的网络模型
@@ -137,7 +136,6 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
         batch_idx = 0
         while batch_idx < (batches_per_epoch):
             for x,y,idx,rot,zoom_factor in val_data:
-                #logging.info('Validating batch{}'.format(batch_idx))
                 batch_idx += 1
                 if batch_idx >= batches_per_epoch:
                     break
@@ -158,11 +156,11 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
                 
                 q_out,ang_out,width_out = post_process(lossdict['pred']['pos'], lossdict['pred']['cos'], 
                                                        lossdict['pred']['sin'], lossdict['pred']['width'])
-                grasps_pre = detect_grasps(q_out,ang_out,width_out,no_grasp = 1)
+                grasp_pres = detect_grasps(q_out,ang_out,width_out,no_grasp = 1)
                 grasps_true = val_data.dataset.get_raw_grasps(idx,rot,zoom_factor)
                 
                 result = 0
-                for grasp_pre in grasps_pre:
+                for grasp_pre in grasp_pres:
                     if max_iou(grasp_pre,grasps_true) > 0.25:
                         result = 1
                         break
@@ -171,13 +169,7 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
                     val_result['correct'] += 1
                 else:
                     val_result['failed'] += 1
-        
-        # if vis:
-        #     #前面几个迭代过程没有有效的grasp_pre提取出来，所以，len是0，所以，不会有可视化结果显示出来
-        #     if len(grasps_pre)>0:
-        #         visualization(val_data,idx,grasps_pre,grasps_true)
-            
-        #print('acc:{}'.format(val_result['correct']/(batches_per_epoch*batch_size)))绝对的计算方法不清楚总数是多少，那就用相对的方法吧
+
         logging.info(time.ctime())
         acc = val_result['correct']/(val_result['correct']+val_result['failed'])
         logging.info('acc:{}'.format(acc))
@@ -186,7 +178,6 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
 
 #这部分是直接copy的train_main2.py  
 def run():
-    
     #设置输出文件夹
     out_dir = 'trained_models/'
     dt = datetime.datetime.now().strftime('%y%m%d_%H%M')
@@ -195,17 +186,18 @@ def run():
     save_folder = os.path.join(out_dir, dt)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
-        
+
     #获取设备
     max_acc = 0.3
     device = torch.device("cuda:0")
-    
+
     #实例化一个网络
-    net = GGCNN(1)
+    input_channels = 1*use_depth+3*use_rgb
+    net = GGCNN2(input_channels)
     net = net.to(device)
     
     #保存网络和训练参数信息
-    summary(net,(1,300,300))
+    summary(net,(1*use_depth+3*use_rgb,300,300))
     # f = open(os.path.join(save_folder,'arch.txt'),'w')
     # sys.stdout = f
     # summary(net,(4,300,300))
@@ -216,31 +208,28 @@ def run():
     #准备数据集
     #训练集
     #logging.info('开始构建数据集:{}'.format(time.ctime()))
-    train_data = Cornell('../cornell',include_rgb = False, start = 0.0,end = split,random_rotate = False,random_zoom = False,output_size=300)
+    train_data = Cornell('../cornell',include_rgb = use_rgb, start = 0.0,end = split,random_rotate = rotate,random_zoom = zoom,output_size=300)
     train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True,num_workers = num_workers)
-    #logging.info('准备完了第一个数据集:{}'.format(time.ctime()))
     #验证集
-    val_data = Cornell('../cornell',include_rgb = False, start = split,end = 1.0,random_rotate = False,random_zoom = False,output_size = 300)
+    val_data = Cornell('../cornell',include_rgb = use_rgb, start = split,end = 1.0,random_rotate = rotate,random_zoom = zoom,output_size = 300)
     val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True,num_workers = num_workers)
-    #logging.info('准备完了第二个数据集:{}'.format(time.ctime()))
-    
+
     #设置优化器
-    optimizer = optim.Adam(net.parameters(),lr = lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5,verbose = True)
+    optimizer = optim.Adam(net.parameters())
+    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5,verbose = True)
     #设置tensorboardX
     tb = tensorboardX.SummaryWriter(os.path.join(save_folder, net_desc))
     #开始主循环
     for epoch in range(epochs):
-        logging.info('current lr={}'.format(optimizer.defaults['lr']))
         train_results = train(epoch, net, device, train_dataset, optimizer, batches_per_epoch)
-        scheduler.step()
+        #scheduler.step()
         #添加总的loss到tb
         tb.add_scalar('loss/train_loss', train_results['loss'], epoch)
         #添加各项的单独loss到tb
         for n, l in train_results['losses'].items():
             tb.add_scalar('train_loss/' + n, l, epoch)
         logging.info('validating...')
-        validate_results = validate(net,device,val_dataset,batches_per_epoch = val_batches,vis = True)
+        validate_results = validate(net,device,val_dataset,batches_per_epoch = val_batches)
         tb.add_scalar('loss/IOU', validate_results['correct'] / (validate_results['correct'] + validate_results['failed']), epoch)
         tb.add_scalar('loss/val_loss', validate_results['loss'], epoch)
         for n, l in validate_results['losses'].items():
@@ -249,34 +238,6 @@ def run():
             max_acc = validate_results['acc']
             torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results['acc'])[0:5],epoch,batch_size))
     return train_results,validate_results
-
-def visualization(val_data,idx,grasps_pre,grasps_true):
-    #最开始的几个迭代过程中不会有q_img值足够大的预测出现，所以，此时提出不出有效的抓取，进而是不会有visuaization出现的
-    img = Image.from_file(val_data.dataset.rgbf[idx])
-    left = val_data.dataset._get_crop_attrs(idx)[1]
-    top = val_data.dataset._get_crop_attrs(idx)[2]
-    img.crop((left,top),(left+300,top+300))
-    
-    a = img.img
-    
-    a_points = grasps_pre[0].as_gr.points.astype(np.uint8)#预测出的抓取
-    b_points = grasps_true.points
-    color1 = (255,255,0)
-    color2 = (255,0,0)
-    for i in range(3):
-        img = cv2.line(a,tuple(a_points[i]),tuple(a_points[i+1]),color1 if i % 2 == 0 else color2,1)
-    img = cv2.line(a,tuple(a_points[3]),tuple(a_points[0]),color2,1)
-    
-    color1 = (0,0,0)
-    color2 = (0,255,0)
-    
-    for b_point in b_points:
-        for i in range(3):
-            img = cv2.line(a,tuple(b_point[i]),tuple(b_point[i+1]),color1 if i % 2 == 0 else color2,1)
-        img = cv2.line(a,tuple(b_point[3]),tuple(b_point[0]),color2,1)
-    #cv2.imshow('img',a)
-    cv2.imwrite('img.png',a)
-    #cv2.waitKey(1000)
 
 if __name__ == '__main__':
     run()

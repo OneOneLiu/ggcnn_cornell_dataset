@@ -18,7 +18,7 @@ from image_pro import Image,DepthImage
 
 class Cornell(torch.utils.data.Dataset):
     #载入cornell数据集的类
-    def __init__(self,file_dir,include_depth=True,include_rgb=True,start = 0.0,end = 1.0,random_rotate = False,random_zoom = False,output_size = 300):
+    def __init__(self,file_dir,include_depth=True,include_rgb=True,start = 0.0,end = 1.0,random_rotate = False,random_zoom = False,output_size = 300,ds_rotate=0):
         '''
         :功能                  : 数据集封装类的初始化函数，功能包括数据集读取，数据集划分，其他参数初始化等
         :参数 file_dir         : str,按照官方文档的示例和之前的经验，这里需要读入数据集，所以需要指定数据的存放路径
@@ -41,19 +41,23 @@ class Cornell(torch.utils.data.Dataset):
         #去指定路径载入数据集数据
         graspf = glob.glob(os.path.join(file_dir,'*','pcd*cpos.txt'))
         graspf.sort()
-        
-        
+
+
         l = len(graspf)
         if l == 0:
             raise FileNotFoundError('没有查找到数据集，请检查路径{}'.format(file_dir))
+
+        if ds_rotate:
+            graspf = graspf[int(l*ds_rotate):] + graspf[:int(l*ds_rotate)]
         
         rgbf = [filename.replace('cpos.txt','r.png') for filename in graspf]
         depthf = [filename.replace('cpos.txt','d.tiff') for filename in graspf]
-        
+
         #按照设定的边界参数对数据进行划分并指定为类的属性
         self.graspf = graspf[int(l*start):int(l*end)]
         self.rgbf = rgbf[int(l*start):int(l*end)]
         self.depthf = depthf[int(l*start):int(l*end)]
+
     @staticmethod
     def numpy_to_torch(s):
         '''
@@ -76,11 +80,12 @@ class Cornell(torch.utils.data.Dataset):
         center = grasp_rectangles.center
         #按照ggcnn里面的话，这里本该加个限制条件，防止角点坐标溢出边界，但前面分析过，加不加区别不大，就不加了
         #分析错误，后面出现bug了，所以还是加上吧
-        left = max(0, min(center[0] - self.output_size // 2, 640 - self.output_size))
-        top = max(0, min(center[1] - self.output_size // 2, 480 - self.output_size))
+        left = max(0, min(center[1] - self.output_size // 2, 640 - self.output_size))
+        top = max(0, min(center[0] - self.output_size // 2, 480 - self.output_size))
         
-        return center,left,top
-    
+        return center,left,top#the center (column,row) must be changed to for later rotate considerations
+        # the center I returned here is equal ti center[::-1] in ggcnn ,but the left and top params is totally equal to those in ggcnn,so all the 
+        # operation which use left and top could be write as same as ggcnn's
     def get_rgb(self,idx,rot=0, zoom=1.0,normalize = True):
         '''
         :功能     :读取返回指定id的rgb图像
@@ -88,15 +93,15 @@ class Cornell(torch.utils.data.Dataset):
         :返回     :ndarray,处理好后的rgb图像
         '''
         rgb_img = Image.from_file(self.rgbf[idx])
-        if normalize:
-            rgb_img.normalize()
         center,left,top = self._get_crop_attrs(idx)
         #先旋转后裁剪再缩放最后resize
         rgb_img.rotate(rot,center)
-        rgb_img.crop((left,top),(left+self.output_size,top+self.output_size))
+        rgb_img.crop((top,left),(min(480,top+self.output_size),min(640,left+self.output_size)))
         rgb_img.zoom(zoom)
         rgb_img.resize((self.output_size, self.output_size))
-        
+        if normalize:
+            rgb_img.normalize()
+            rgb_img.img = rgb_img.img.transpose((2, 0, 1))
         return rgb_img.img
     
     #因为有时候只输入RGB三通道信息，所以，定义两个返回函数，一个读取RGB一个读取深度
@@ -108,11 +113,11 @@ class Cornell(torch.utils.data.Dataset):
         '''
         #目前这个DepthImage类还没有定义，后面仿照Image类给它定义一下
         depth_img = DepthImage.from_file(self.depthf[idx])
-        depth_img.normalize()
         center,left,top = self._get_crop_attrs(idx)
         #先旋转后裁剪再缩放最后resize
         depth_img.rotate(rot,center)
-        depth_img.crop((left,top),(left+self.output_size,top+self.output_size))
+        depth_img.crop((top,left),(min(480,top+self.output_size),min(640,left+self.output_size)))
+        depth_img.normalize()
         depth_img.zoom(zoom)
         depth_img.resize((self.output_size, self.output_size))
         return depth_img.img
@@ -127,13 +132,13 @@ class Cornell(torch.utils.data.Dataset):
         center, left, top = self._get_crop_attrs(idx)
         #先旋转再偏移再缩放
         grs.rotate(rot,center)
-        grs.offset((-left,-top))
+        grs.offset((-top,-left))
         grs.zoom(zoom,(self.output_size//2,self.output_size//2))
         pos_img,angle_img,width_img = grs.generate_img(shape = (self.output_size,self.output_size))
         
         return pos_img,angle_img,width_img
     
-    def get_raw_grasps(self,idx,rot,zoom_factor):
+    def get_raw_grasps(self,idx,rot = 0.0,zoom = 1.0):
         '''
         :功能       :读取返回指定id的抓取框信息斌进行一系列预处理(裁剪，缩放等)后以Grasps对象的形式返回
         :参数 idx   :int,要读取的数据id
@@ -142,8 +147,8 @@ class Cornell(torch.utils.data.Dataset):
         raw_grasps = Grasps.load_from_cornell_files(self.graspf[idx])
         center, left, top = self._get_crop_attrs(idx)
         raw_grasps.rotate(rot,center)
-        raw_grasps.offset((-left,-top))
-        raw_grasps.zoom(zoom_factor,(self.output_size//2,self.output_size//2))
+        raw_grasps.offset((-top,-left))
+        raw_grasps.zoom(zoom,(self.output_size//2,self.output_size//2))
         
         return raw_grasps
 
@@ -191,7 +196,6 @@ class Cornell(torch.utils.data.Dataset):
         # 限定抓取宽度范围并将其映射到[0,1]
         width_img = np.clip(width_img, 0.0, 150.0)/150.0
         width_img = self.numpy_to_torch(width_img)
-        
         return x,(pos_img,cos_img,sin_img,width_img),idx,rot,zoom_factor#这里多返回idx,rot和zomm_facor参数，方便后面索引查找真实标注，并对真实的标注做同样处理以保证验证的准确性
     #映射类型的数据集，别忘了定义这个函数
     def __len__(self):
