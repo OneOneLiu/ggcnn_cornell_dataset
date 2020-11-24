@@ -2,9 +2,8 @@
 """
 Created on Fri Sep 11 21:29:59 2020
 
-这个函数直接照搬的validate_main2.py
 
-@author: LiuDahui
+@author: LiuDaohui
 """
 
 #导入第三方包
@@ -20,22 +19,22 @@ import os
 import logging
 #导入自定义包
 from ggcnn2 import GGCNN2
-from ggcnn import GGCNN
+#from ggcnn import GGCNN
 from jacquard import Jacquard
-from cornell_pro import Cornell
+#from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
 
 #一些训练参数的设定
 batch_size = 8
-epochs = 50
+epochs = 100
 batches_per_epoch = 1000
 val_batches = 250
 lr = 0.001
 
 use_depth = True
 use_rgb = True
-rotate = True
-zoom = True
+r_rotate = True
+r_zoom = True
 
 split = 0.9
 num_workers = 7
@@ -208,10 +207,10 @@ def run():
     #准备数据集
     #训练集
     #logging.info('开始构建数据集:{}'.format(time.ctime()))
-    train_data = Cornell('../cornell',include_rgb = use_rgb, start = 0.0,end = split,random_rotate = rotate,random_zoom = zoom,output_size=300)
+    train_data = Jacquard('../jacquard',include_rgb = use_rgb, start = 0.0,end = split,random_rotate = r_rotate,random_zoom = r_zoom,output_size=300)
     train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True,num_workers = num_workers)
     #验证集
-    val_data = Cornell('../cornell',include_rgb = use_rgb, start = split,end = 1.0,random_rotate = rotate,random_zoom = zoom,output_size = 300)
+    val_data = Jacquard('../jacquard',include_rgb = use_rgb, start = split,end = 1.0,random_rotate = r_rotate,random_zoom = r_zoom,output_size = 300)
     val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True,num_workers = num_workers)
 
     #设置优化器

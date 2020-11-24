@@ -38,6 +38,7 @@ class Image:
     def normalize(self):
         '''
         :功能 :将图像像素值标准化至[0,1]范围
+        :功能 :将图像像素值标准化至[0,1]范围
         '''
         self.img = self.img.astype('float32')/255.0
         self.img = self.img-self.img.mean()
@@ -84,10 +85,14 @@ class Image:
 class DepthImage(Image):
     '''深度图像类，读取，载入，正则等预处理都是一样的，后面可能会添加一些针对深度图的专属处理功能'''
     def __init__(self,img):
-        super(DepthImage,self).__init__(img)
+        super().__init__(img)
 
     def normalize(self):
         """
         通过减去均值并修剪至[-1,1]的范围的方式进行正则化,与RGB的处理不同
         """
         self.img = np.clip((self.img - self.img.mean()), -1, 1)
+    
+    @classmethod
+    def from_tiff(cls, fname):
+        return cls(imread(fname))
