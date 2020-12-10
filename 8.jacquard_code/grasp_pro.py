@@ -108,8 +108,8 @@ class Grasp:
         #定义旋转矩阵
         R = np.array(
             [
-                [np.cos(angle), np.sin(angle)],
-                [-1 * np.sin(angle), np.cos(angle)],
+                [np.cos(-angle), np.sin(-angle)],
+                [-1 * np.sin(-angle), np.cos(-angle)],
             ]
         )
         #处理旋转中心
@@ -202,7 +202,7 @@ class Grasps:
         with open(jacquard_grasp_files) as f:
             for line in f:
                 x, y, theta, w, h = [float(v) for v in line[:-1].split(';')]
-                grasp_rectangles.append(Grasp_cpaw(np.array([x,y]),-theta/180.0*np.pi,h,w).as_gr)#我这边读取的顺序跟GGCNN中的有些不同
+                grasp_rectangles.append(Grasp_cpaw(np.array([y,x]),-theta/180.0*np.pi,h,w).as_gr)#我这边读取的顺序跟GGCNN中的有些不同,now.they asr totally same.
         grasp_rectangles = cls(grasp_rectangles)
         grasp_rectangles.scale(scale)
         return grasp_rectangles#返回实例化的类
