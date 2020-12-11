@@ -1,5 +1,7 @@
 cornell/*
 jacquard/*
 jacquard_code_old/*
+.__pycache__/*
 *.pyc
 *.txt
+.ods
