@@ -23,8 +23,6 @@ from ggcnn2 import GGCNN2
 #from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
 
-from utils.dataset_processing import evaluation
-from models.common import post_process_output
 #一些训练参数的设定
 batch_size = 8
 epochs = 20

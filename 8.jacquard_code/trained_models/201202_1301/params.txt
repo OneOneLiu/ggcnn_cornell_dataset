@@ -1,4 +1,0 @@
-batch_size:2
-batches_per_epoch:1000
-epochs:1
-lr:0.001
