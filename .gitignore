@@ -2,6 +2,7 @@ cornell/*
 jacquard/*
 jacquard_code_old/*
 .__pycache__/*
+.trained_models/*
 *.pyc
 *.txt
 .ods
