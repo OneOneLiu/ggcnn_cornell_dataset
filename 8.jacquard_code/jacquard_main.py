@@ -18,9 +18,8 @@ import os
 #summary输出保存之后print函数失灵，但还可以用这个logging来打印输出
 import logging
 #导入自定义包
-from ggcnn2 import GGCNN2
- #from ggcnn import GGCNN
 from jacquard import Jacquard
+from ggcnn2 import GGCNN2
 #from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
 
