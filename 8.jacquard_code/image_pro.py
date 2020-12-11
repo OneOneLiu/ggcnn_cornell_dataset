@@ -38,6 +38,7 @@ class Image:
     def normalize(self):
         '''
         :功能 :将图像像素值标准化至[0,1]范围
+        :功能 :将图像像素值标准化至[0,1]范围
         '''
         self.img = self.img.astype('float32')/255.0
         self.img = self.img-self.img.mean()

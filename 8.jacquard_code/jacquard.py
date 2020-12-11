@@ -19,7 +19,11 @@ from grasp_pro import Grasps
 
 class Jacquard(torch.utils.data.Dataset):
     #载入Jacquard数据集的类
+<<<<<<< HEAD
     def __init__(self,file_dir,include_depth = True,include_rgb = True,start = 0.0,end = 1.0,ds_rotate = 0,random_rotate = False,random_zoom = False,output_size = 300):
+=======
+    def __init__(self,file_dir,include_depth = True,include_rgb = True,start = 0.0,end = 1.0,ds_rotate=0,random_rotate = False,random_zoom = False,output_size = 300):
+>>>>>>> f22ab655c396b51d394b83029f54f24e21a97d20
         '''
         参数
         ----------
@@ -48,9 +52,10 @@ class Jacquard(torch.utils.data.Dataset):
         #去指定路径载入数据集数据
         graspf = glob.glob(os.path.join(file_dir,'*','*','*_grasps.txt'))
         graspf.sort()
-        
-        
         l = len(graspf)
+        if ds_rotate:
+            graspf = graspf[int(l*ds_rotate):] + graspf[:int(l*ds_rotate)]
+
         if l == 0:
             raise FileNotFoundError('没有查找到数据集，请检查路径{}'.format(file_dir))
         if ds_rotate:
@@ -90,7 +95,10 @@ class Jacquard(torch.utils.data.Dataset):
         if normalize:
             rgb_img.normalize()
             rgb_img.img = rgb_img.img.transpose((2, 0, 1))
+<<<<<<< HEAD
             #这里还有一句transpose没写，先不管
+=======
+>>>>>>> f22ab655c396b51d394b83029f54f24e21a97d20
         return rgb_img.img
         
     def get_depth(self,idx,rot = 0,zoom = 1.0):
@@ -99,7 +107,7 @@ class Jacquard(torch.utils.data.Dataset):
         :参数 idx :int,要读取的数据id
         :返回     :ndarray,处理好后的depth图像
         '''
-        depth_img = DepthImage.from_file(self.depthf[idx])
+        depth_img = DepthImage.from_tiff(self.depthf[idx])
         depth_img.rotate(rot)
         depth_img.normalize()
         depth_img.zoom(zoom)
@@ -107,7 +115,11 @@ class Jacquard(torch.utils.data.Dataset):
         
         return depth_img.img
         
+<<<<<<< HEAD
     def get_grasp(self,idx,rot = 0,zoom=1.0):
+=======
+    def get_grasp(self,idx,rot = 0,zoom = 1.0):
+>>>>>>> f22ab655c396b51d394b83029f54f24e21a97d20
         grs = Grasps.load_from_jacquard_files(self.graspf[idx],scale = self.output_size/1024.0)#因为图像每个都resize了，所以这里每个抓取框都要缩放
         c = self.output_size//2
         grs.rotate(rot,(c,c))
@@ -117,7 +129,11 @@ class Jacquard(torch.utils.data.Dataset):
         
         return pos_img,angle_img,width_img
         
+<<<<<<< HEAD
     def get_gtbb(self,idx,rot = 0,zoom = 1.0):
+=======
+    def get_raw_grasps(self,idx,rot = 0,zoom = 1.0):
+>>>>>>> f22ab655c396b51d394b83029f54f24e21a97d20
         '''
         :功能       :读取返回指定id的抓取框信息斌进行一系列预处理(裁剪，缩放等)后以Grasps对象的形式返回
         :参数 idx   :int,要读取的数据id

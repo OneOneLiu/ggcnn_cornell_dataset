@@ -19,15 +19,15 @@ import os
 import logging
 #导入自定义包
 from ggcnn2 import GGCNN2
-#from ggcnn import GGCNN
+ #from ggcnn import GGCNN
 from jacquard import Jacquard
-from cornell_pro import Cornell
+#from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
 
 from utils.dataset_processing import evaluation
 from models.common import post_process_output
 
-#一些训练参数的设定d
+#一些训练参数的设定
 batch_size = 8
 epochs = 20
 batches_per_epoch = 1000
