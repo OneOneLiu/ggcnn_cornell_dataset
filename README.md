@@ -15,9 +15,9 @@ Re-implementation of excellent ggcnn code,the original repositiry address is :ht
 - 4.train 训练部分
 - 5.validate 验证部分
 - 6.optimize 优化部分（实际上这里才是数据增强）
-- 7.ggcnn2 就是用了下ggcnn模型
+- 7.ggcnn2 就是用了下ggcnn2模型
 - 8.jacquard_code 使用jacquard数据集进行训练
-- 9.acceleration 尝试使用DALI库进行加速,还没完成
+- 9.acceleration 尝试使用DALI库进行加速,还没完成,估计后面也不会完成了,觉得成不了
 - images:存放一些笔记中用到的图片
 - support_files:存放一些积累答疑文件
 - problems:遇到的一些问题
