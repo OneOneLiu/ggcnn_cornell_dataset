@@ -167,10 +167,10 @@ def run(net):
     
     #准备数据集
     #训练集
-    train_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size=300)
+    train_data = Cornell('./cornell',random_rotate = True,random_zoom = True,output_size=300)
     train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True)
     #验证集
-    val_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size = 300)
+    val_data = Cornell('./cornell',random_rotate = True,random_zoom = True,output_size = 300)
     val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True)
     
     #设置优化器

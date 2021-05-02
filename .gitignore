@@ -1,8 +1,14 @@
-cornell/*
-jacquard/*
-jacquard_code_old/*
+# ignore caches
 .__pycache__/*
-.trained_models/*
 *.pyc
 *.txt
 .ods
+
+# ignore folders
+trained_models/
+.vscode/
+jacquard_code_old/*
+
+# ignore datasets
+cornell/*
+jacquard/*

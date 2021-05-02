@@ -217,14 +217,14 @@ def run(num_workers):
     #     f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
     #准备数据集
     #训练集
-    train_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size=300)
+    train_data = Cornell('./cornell',random_rotate = True,random_zoom = True,output_size=300)
     train_dataset = torch.utils.data.DataLoader(
         train_data,
         batch_size = batch_size,
         shuffle = True,
         num_workers = num_workers)
     #验证集
-    val_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size = 300)
+    val_data = Cornell('./cornell',random_rotate = True,random_zoom = True,output_size = 300)
     val_dataset = torch.utils.data.DataLoader(
         val_data,
         batch_size = 1,
@@ -292,4 +292,4 @@ if __name__ == '__main__':
             'time2_3s':time2_3s
         }
         time_result[i] = dict_cache
-        print(time_result[i])
+        # print(time_result[i])

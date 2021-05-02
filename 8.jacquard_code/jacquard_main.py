@@ -185,7 +185,7 @@ def run():
         os.makedirs(save_folder)
 
     #获取设备
-    max_acc = 0.3
+    max_acc = 0.8
     device = torch.device("cuda:0")
 
     #实例化一个网络

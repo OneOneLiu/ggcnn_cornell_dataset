@@ -24,11 +24,11 @@ from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
 
 #一些训练参数的设定
-batch_size = 4
+batch_size = 16
 batches_per_epoch = 1000
 epochs = 100
 lr = 0.00005
-num_workers = 7
+num_workers = 6
 val_batches = 250
 
 logging.basicConfig(level=logging.INFO)
@@ -202,9 +202,9 @@ def run():
         os.makedirs(save_folder)
         
     #获取设备
-    max_acc = 0.0
     device = torch.device("cuda:0")
-    
+    max_acc = 0.8
+
     #实例化一个网络
     net = GGCNN2(4)
     net = net.to(device)
@@ -221,10 +221,10 @@ def run():
         f.write('batch_size:{}\nbatches_per_epoch:{}\nepochs:{}\nlr:{}'.format(batch_size,batches_per_epoch,epochs,lr))
     #准备数据集
     #训练集
-    train_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size=300)
+    train_data = Cornell('./cornell',random_rotate = True,random_zoom = True,output_size=300)
     train_dataset = torch.utils.data.DataLoader(train_data,batch_size = batch_size,shuffle = True,num_workers = num_workers)
     #验证集
-    val_data = Cornell('../cornell',random_rotate = True,random_zoom = True,output_size = 300)
+    val_data = Cornell('./cornell',random_rotate = True,random_zoom = True,output_size = 300)
     val_dataset = torch.utils.data.DataLoader(val_data,batch_size = 1,shuffle = True,num_workers = num_workers)
 
     #设置优化器
