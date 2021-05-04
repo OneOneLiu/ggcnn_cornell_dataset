@@ -18,7 +18,7 @@ import os
 import sys
 import logging
 #导入自定义包
-from ggcnn2 import GGCNN2
+from ggcnn2_new import GGCNN2
 from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
@@ -27,7 +27,7 @@ from image_pro import Image
 batch_size = 16
 batches_per_epoch = 1000
 epochs = 100
-lr = 0.00005
+lr = 0.001
 num_workers = 6
 val_batches = 250
 
@@ -203,7 +203,7 @@ def run():
         
     #获取设备
     device = torch.device("cuda:0")
-    max_acc = 0.8
+    max_acc = 0.1
 
     #实例化一个网络
     net = GGCNN2(4)
@@ -238,7 +238,7 @@ def run():
         #logging.info('{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
         if validate_results > max_acc:
             max_acc = validate_results
-            torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
+            torch.save(net.state_dict(),'{0}/model{1}_epoch{2}_batch_{3}.pth'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
     return train_results,validate_results
 
 if __name__ == '__main__':

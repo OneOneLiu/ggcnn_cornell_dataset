@@ -8,6 +8,7 @@
 trained_models/
 .vscode/
 jacquard_code_old/*
+ggcnn2_old/*
 
 # ignore datasets
 cornell/*
