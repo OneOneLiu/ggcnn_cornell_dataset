@@ -71,7 +71,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             batch_idx += 1
             if batch_idx >= batches_per_epoch:
                 break
-
+ 
             #将数据传到GPU
             xc = x.to(device)
             yc = [yy.to(device) for yy in y]
@@ -235,7 +235,7 @@ def run():
             tb.add_scalar('val_loss/' + n, l, epoch)
         if validate_results['acc'] > max_acc:
             max_acc = validate_results['acc']
-            torch.save(net,'{0}/model{1}_epoch{2}_batch_{3}'.format(save_folder,str(validate_results['acc'])[0:5],epoch,batch_size))
+            torch.save(net.state_dict(),'{0}/model{1}_epoch{2}_batch_{3}.pth'.format(save_folder,str(validate_results['acc'])[0:5],epoch,batch_size))
     return train_results,validate_results
 
 if __name__ == '__main__':

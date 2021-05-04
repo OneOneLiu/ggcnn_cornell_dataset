@@ -108,8 +108,8 @@ class Grasp:
         #定义旋转矩阵
         R = np.array(
             [
-                [np.cos(angle), np.sin(angle)],
-                [-1 * np.sin(angle), np.cos(angle)],
+                [np.cos(-angle), np.sin(-angle)],
+                [-1 * np.sin(-angle), np.cos(-angle)],
             ]
         )
         #处理旋转中心
