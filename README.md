@@ -4,7 +4,7 @@
 
 追随着大佬的脚步，从头复现一下大佬的论文程序，大佬的代码项目地址为：https://github.com/dougsm/ggcnn
 
-Re-implementation of excellent ggcnn code,the original repositiry address is :https://github.com/dougsm/ggcnn
+Re-implementation of the excellent ggcnn code,the original repositiry address is :https://github.com/dougsm/ggcnn
 
 ## 2.文件说明(Instruction for files)
 
