@@ -118,7 +118,7 @@ class Jacquard(torch.utils.data.Dataset):
         
         return pos_img,angle_img,width_img
         
-    def get_gtbb(self,idx,rot = 0,zoom = 1.0):
+    def get_raw_grasps(self,idx,rot = 0,zoom = 1.0):
         '''
         :功能       :读取返回指定id的抓取框信息斌进行一系列预处理(裁剪，缩放等)后以Grasps对象的形式返回
         :参数 idx   :int,要读取的数据id
@@ -179,26 +179,3 @@ class Jacquard(torch.utils.data.Dataset):
     #映射类型的数据集，别忘了定义这个函数
     def __len__(self):
         return len(self.graspf)
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        

@@ -10,7 +10,7 @@ import numpy as np
 from skimage.draw import polygon
 
 
-def str2num(point):
+def str2num(point, offset=(0, 0)):
     '''
     :功能  :将字符串类型存储的抓取框脚点坐标取整并以元组形式返回
     
@@ -18,9 +18,7 @@ def str2num(point):
     :返回值 :列表，包含int型抓取点数据的列表[x,y]
     '''
     x,y = point.split()
-    x,y = int(round(float(x))),int(round(float(y)))
-    
-    return np.array([x,y])
+    return [int(round(float(y))) - offset[0], int(round(float(x))) - offset[1]]
 
 
 
@@ -39,7 +37,7 @@ class Grasp:
         :功能          : 计算本类中所包含的抓取框的中心点
         :返回 1darray  : 本类所包含抓取框的中心点array[x,y]
         '''
-        center = np.mean(self.points,axis = 0).astype(np.uint32)
+        center = self.points.mean(axis = 0).astype(np.int)
         return center
     
     @property
@@ -49,8 +47,8 @@ class Grasp:
         :返回 1darray  : 本类所包含抓取框的长度[width]
         '''
         #第二个点和第三个点之间的间距长度
-        dx = self.points[0][0] - self.points[1][0]
-        dy = self.points[0][1] - self.points[1][1]
+        dx = self.points[1,1] - self.points[0,1]
+        dy = self.points[1,0] - self.points[0,0]
         
         return np.sqrt(dx**2+dy**2)
     
@@ -61,8 +59,8 @@ class Grasp:
         :返回 1darray  : 本类所包含抓取框的长度[length]
         '''
         #第二个点和第三个点之间的间距长度
-        dx = self.points[1][0] - self.points[2][0]
-        dy = self.points[1][1] - self.points[2][1]
+        dx = self.points[2,1] - self.points[1,1]
+        dy = self.points[2,0] - self.points[1,0]
         
         return np.sqrt(dx**2+dy**2)
     
@@ -73,8 +71,8 @@ class Grasp:
         :返回 1darray  : 本类所包含抓取框的旋转角度（弧度值）
         ''' 
         
-        dx = self.points[0][0] - self.points[1][0]
-        dy = self.points[0][1] - self.points[1][1]
+        dx = self.points[1,1] - self.points[0,1]
+        dy = self.points[1,0] - self.points[0,0]
         
         return (np.arctan2(-dy,dx) + np.pi/2) % np.pi - np.pi/2
     
@@ -110,8 +108,8 @@ class Grasp:
         #定义旋转矩阵
         R = np.array(
             [
-                [np.cos(angle), np.sin(angle)],
-                [-1 * np.sin(angle), np.cos(angle)],
+                [np.cos(-angle), np.sin(-angle)],
+                [-1 * np.sin(-angle), np.cos(-angle)],
             ]
         )
         #处理旋转中心
@@ -184,14 +182,13 @@ class Grasps:
                 if not point0:
                     break
                 point1,point2,point3 = f.readline().strip(),f.readline().strip(),f.readline().strip()
-                if point0[0] == 'N':#后面发现有些坐标点坐标是NaN，会报错，这里处理一下，暂时还不晓得gg-cnn里面怎么处理的
+                if point0[0] == 'N':#后面发现有些坐标点坐标是NaN，会报错，这里处理一下，暂时还不晓得gg-cnn里面怎么处理的,he added a erroe process code
                     break
                 grasp_rectangle = np.array([str2num(point0),
                                str2num(point1),
                                str2num(point2),
                                str2num(point3)])
-                grasp_rectangles.append(Grasp(grasp_rectangle))#找出各个框后就直接用它构造Grasp对象了
-
+                grasp_rectangles.append(Grasp(grasp_rectangle))#找出各个框后就直接用它构造Grasp对象了  
         return cls(grasp_rectangles)#返回实例化的类
     
     @classmethod
@@ -205,7 +202,7 @@ class Grasps:
         with open(jacquard_grasp_files) as f:
             for line in f:
                 x, y, theta, w, h = [float(v) for v in line[:-1].split(';')]
-                grasp_rectangles.append(Grasp_cpaw(np.array([x,y]),-theta/180.0*np.pi,h,w).as_gr)#我这边读取的顺序跟GGCNN中的有些不同
+                grasp_rectangles.append(Grasp_cpaw(np.array([y,x]),-theta/180.0*np.pi,h,w).as_gr)#我这边读取的顺序跟GGCNN中的有些不同,now.they asr totally same.
         grasp_rectangles = cls(grasp_rectangles)
         grasp_rectangles.scale(scale)
         return grasp_rectangles#返回实例化的类
@@ -237,11 +234,11 @@ class Grasps:
             rr,cc = gr.compact_polygon_coords(shape)#shape的指定还是很重要的，可以考虑图像边界
             
             if pos:
-                pos_out[cc,rr] = 1.0
+                pos_out[rr,cc] = 1.0
             if angle:
-                angle_out[cc,rr] = gr.angle
+                angle_out[rr,cc] = gr.angle
             if width:
-                width_out[cc,rr] = gr.width
+                width_out[rr,cc] = gr.width
 
         return pos_out,angle_out,width_out
     @property
@@ -261,11 +258,8 @@ class Grasps:
         :功能       :计算本类中所包含的多个抓取框共同的中心
         :返回       :ndarray，中心坐标
         '''
-        centers = []
-        for gr in self.grs:
-            centers.append(gr.center)
-        center = np.mean(np.array(centers),axis = 0).astype(np.uint32)
-        return center
+        points = [gr.points for gr in self.grs]
+        return np.mean(np.vstack(points), axis=0).astype(np.int)
 
 
 class Grasp_cpaw:
@@ -275,15 +269,21 @@ class Grasp_cpaw:
     理比较方方便（比如将矩形的宽度缩小三倍），但是最终的绘制还是要通过角点坐标来实现，所以，里面还要有一个能够根据
     这几个参数反求角点坐标的函数
     '''
-    def __init__(self,center, angle, length=60, width=30):
+    def __init__(self,center, angle, length=30, width=60):
         '''
         :功能       :类初始化函数，进行参数传递
         :参数       :这些参数是啥很明显了吧，就不再赘述了
+        :note      : attention!The params inputed to this function ,such as center,angle,etc,have alreadey been preprocessed to be as same as
+        the format in raw ggcnn,so this function should also be writen as same as raw ggcnn to get the correct returns,in others words ,though 
+        the (row,column) coords in my code is opposite with those in ggcnn ,your have corrected this bug in previous code(somewhere around plygon_coords),
+        thus,the (row,column) format is equal to raw ggcnn here, if you adjust the order again, the bug will appear again,so just keep the code here to be
+        as same as raw ggcnn and everthing will be fine(except the name of width and length). 
         '''
         self.center = center
         self.angle = angle   # 正角度表示沿水平方向逆时针旋转
         self.length = length
         self.width = width
+
         
     @property
     def as_gr(self):
@@ -293,17 +293,17 @@ class Grasp_cpaw:
         '''
         xo = np.cos(self.angle)
         yo = np.sin(self.angle)
-        
-        y1 = self.center[0] - self.width / 2 * xo
-        x1 = self.center[1] + self.width / 2 * yo
-        y2 = self.center[0] + self.width / 2 * xo
-        x2 = self.center[1] - self.width / 2 * yo
+
+        y1 = self.center[0] + self.width / 2 * yo
+        x1 = self.center[1] - self.width / 2 * xo
+        y2 = self.center[0] - self.width / 2 * yo
+        x2 = self.center[1] + self.width / 2 * xo
         
         return Grasp(np.array(
             [
-             [y1 - self.length/2 * yo, x1 - self.length/2 * xo],
-             [y2 - self.length/2 * yo, x2 - self.length/2 * xo],
-             [y2 + self.length/2 * yo, x2 + self.length/2 * xo],
-             [y1 + self.length/2 * yo, x1 + self.length/2 * xo],
+             [y1 - self.length/2 * xo,x1 - self.length/2 * yo],
+             [y2 - self.length/2 * xo,x2 - self.length/2 * yo],
+             [y2 + self.length/2 * xo,x2 + self.length/2 * yo],
+             [y1 + self.length/2 * xo,x1 + self.length/2 * yo],
              ]
-        ).astype(np.float))#搞成整数后返回，后面可视化的时候比较好处理
+        ).astype(np.float))
