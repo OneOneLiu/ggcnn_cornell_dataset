@@ -26,15 +26,15 @@ from functions import post_process, detect_grasps, max_iou
 
 # 一些训练参数的设定
 batch_size = 8
-epochs = 20
+epochs = 200
 batches_per_epoch = 1000
 val_batches = 250
 lr = 0.001
 
-use_depth = False
+use_depth = True
 use_rgb = True
-r_rotate = False
-r_zoom = False
+r_rotate = True
+r_zoom = True
 
 split = 0.9
 num_workers = 6
