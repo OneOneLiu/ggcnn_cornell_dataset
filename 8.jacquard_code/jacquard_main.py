@@ -228,27 +228,31 @@ def run():
 
     # 设置优化器
     optimizer = optim.Adam(net.parameters())
-    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5,verbose = True)
     # 设置tensorboardX
     tb = tensorboardX.SummaryWriter(os.path.join(save_folder, net_desc))
     # 开始主循环
     for epoch in range(epochs):
         train_results = train(epoch, net, device,
                               train_dataset, optimizer, batches_per_epoch)
-        # scheduler.step()
+
         # 添加总的loss到tb
         tb.add_scalar('loss/train_loss', train_results['loss'], epoch)
         # 添加各项的单独loss到tb
         for n, l in train_results['losses'].items():
             tb.add_scalar('train_loss/' + n, l, epoch)
+
         logging.info('validating...')
         validate_results = validate(
             net, device, val_dataset, batches_per_epoch=val_batches)
+
+        # 添加IOU到tb
         tb.add_scalar('loss/IOU', validate_results['correct'] / (
             validate_results['correct'] + validate_results['failed']), epoch)
+        # 添加各项的单独loss到tb
         tb.add_scalar('loss/val_loss', validate_results['loss'], epoch)
         for n, l in validate_results['losses'].items():
             tb.add_scalar('val_loss/' + n, l, epoch)
+
         if validate_results['acc'] > max_acc:
             max_acc = validate_results['acc']
             torch.save(net.state_dict(), '{0}/model{1}_epoch{2}_batch_{3}.pth'.format(
