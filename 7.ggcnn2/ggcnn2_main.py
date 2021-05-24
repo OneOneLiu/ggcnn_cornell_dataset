@@ -12,9 +12,8 @@ import torch.optim as optim
 from torchsummary import summary
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
+import datetime
 import cv2
-import time
-import datetim
 import os
 import sys
 import logging
@@ -28,14 +27,14 @@ from image_pro import Image
 dataset = 'cornell'
 batch_size = 16
 batches_per_epoch = 1000
-epochs = 20
+epochs = 25
 lr = 0.001
 num_workers = 6
 val_batches = 250
 
 split = 0.9
 use_rgb = True
-use_depth = False
+use_depth = True
 random_rotate = True
 random_zoom = True
 
@@ -67,8 +66,6 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
     
     #开始样本训练迭代
     while batch_idx < batches_per_epoch:
-        #print('唉，又来重新载入数据了')
-        #print('time1:',time.time())
         for x, y, _,_,_ in train_data:#这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
             batch_idx += 1
             #print('time2:',time.time())
@@ -247,27 +244,13 @@ def run():
     
     #initialize tensorboard summary writer
     tb = SummaryWriter(log_dir = os.path.join(save_folder, net_desc))
-    #add hparams
-    tb.add_hparams({
-        'dataset' : dataset,
-        'batch_size' : batch_size,
-        'batches_per_epoch' : batches_per_epoch,
-        'epochs' : epochs,
-        'lr' : lr,
-        'num_workers' : num_workers,
-        'val_batches' : val_batches,
 
-        'split' : split,
-        'use_rgb' : use_rgb,
-        'use_depth' : use_depth,
-        'random_rotate' : random_rotate,
-        'random_zoom' : random_zoom})
     #开始主循环
     for epoch in range(epochs):
         train_results = train(epoch, net, device, train_dataset, optimizer, batches_per_epoch = batches_per_epoch)
 
         # 添加总的loss到tb
-        tb.add_scalars('loss/train_loss':train_results['loss'], epoch)
+        tb.add_scalar('loss/train_loss',train_results['loss'], epoch)
         # 添加各项的单独loss到tb
         for n, l in train_results['losses'].items():
             tb.add_scalar('train_loss/' + n, l, epoch)
@@ -277,15 +260,15 @@ def run():
 
         tb.add_scalar('loss/IOU', validate_results['correct'] / (
             validate_results['correct'] + validate_results['failed']), epoch)
-        tb.add_scalar('loss/val_loss', va   lidate_results['loss'], epoch)
+        tb.add_scalar('loss/val_loss', validate_results['loss'], epoch)
         for n, l in validate_results['losses'].items():
             tb.add_scalar('val_loss/' + n, l, epoch)
 
         if validate_results['acc'] > max_acc:
             max_acc = validate_results['acc']
-            torch.save(net.state_dict(),'{0}/model{1}_epoch{2}_batch_{3}.pth'.format(save_folder,str(validate_results)[0:5],epoch,batch_size))
+            torch.save(net.state_dict(),'{0}/model{1}_epoch{2}_batch_{3}.pth'.format(save_folder,str(validate_results['acc'])[0:5],epoch,batch_size))
     # 无论精度值如何,保存最后一次的结果
-    torch.save(net.state_dict(),'{0}/model{1}_epoch{2}_batch_{3}.pth'.format(save_folder,str(validate_results)[0:5],epoch,batch_size)
+    torch.save(net.state_dict(),'{0}/model{1}_epoch{2}_batch_{3}.pth'.format(save_folder,str(validate_results['acc'])[0:5],epoch,batch_size))
     tb.close()
     return train_results,validate_results
 

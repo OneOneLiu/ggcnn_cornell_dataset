@@ -26,7 +26,7 @@ from functions import post_process, detect_grasps, max_iou
 
 # 一些训练参数的设定
 batch_size = 8
-epochs = 200
+epochs = 40
 batches_per_epoch = 1000
 val_batches = 250
 lr = 0.001
@@ -261,4 +261,6 @@ def run():
 
 
 if __name__ == '__main__':
+    use_depth = False
+    use_rgb = True
     run()
