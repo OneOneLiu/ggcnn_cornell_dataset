@@ -74,7 +74,7 @@ class GGCNN2(nn.Module):
         width_loss = F.mse_loss(width_pred, y_width)
 
         return {
-            'loss': p_loss + 0.0625*cos_loss + 0.0625*sin_loss + width_loss,
+            'loss': p_loss + cos_loss + sin_loss + width_loss,
             'losses': {
                 'p_loss': p_loss,
                 'cos_loss': cos_loss,

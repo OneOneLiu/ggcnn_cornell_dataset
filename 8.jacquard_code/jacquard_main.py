@@ -10,7 +10,7 @@ Created on Fri Sep 11 21:29:59 2020
 import torch
 import torch.optim as optim
 from torchsummary import summary
-import tensorboardX
+from torch.utils.tensorboard import SummaryWriter
 
 import time
 import datetime
@@ -18,21 +18,25 @@ import os
 # summary输出保存之后print函数失灵，但还可以用这个logging来打印输出
 import logging
 import sys
+import copy
+from collections import Counter
 # 导入自定义包
 from jacquard import Jacquard
 from ggcnn2 import GGCNN2
-#from cornell_pro import Cornell
-from functions import post_process, detect_grasps, max_iou
+from eenet import EENET
+# from cornell_pro import Cornell
+from functions import post_process, detect_grasps, max_iou, scale_width, correct_grasp, delete_surplus
 
-# 一些训练参数的设定
+# 一些训练参数的设定           
 batch_size = 8
-epochs = 40
-batches_per_epoch = 1000
+epochs = 100
+c_epochs = 40
+batches_per_epoch = 100
 val_batches = 250
 lr = 0.001
 
 use_depth = True
-use_rgb = True
+use_rgb = False
 r_rotate = True
 r_zoom = True
 
@@ -40,7 +44,7 @@ split = 0.9
 num_workers = 6
 
 logging.basicConfig(level=logging.INFO)
-
+ex1_path_07 = '/home/ldh/github_repositorys/ggcnn_cornell_dataset/trained_models/intensity_test/ex1_0.7'
 # 这部分是直接copy的train_main2.py
 
 
@@ -71,7 +75,7 @@ def train(epoch, net, device, train_data, optimizer, batches_per_epoch):
     # 开始样本训练迭代
     while batch_idx < batches_per_epoch:
         # 这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
-        for x, y, _, _, _ in train_data:
+        for x, y, _, _, _, _ in train_data:
             batch_idx += 1
             if batch_idx >= batches_per_epoch:
                 break
@@ -86,7 +90,7 @@ def train(epoch, net, device, train_data, optimizer, batches_per_epoch):
             loss = lossdict['loss']
 
             # 打印一下训练过程
-            if batch_idx % 100 == 0:
+            if batch_idx % 10 == 0:
                 logging.info('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(
                     epoch, batch_idx, loss.item()))
 
@@ -97,8 +101,8 @@ def train(epoch, net, device, train_data, optimizer, batches_per_epoch):
                 if ln not in results['losses']:
                     results['losses'][ln] = 0
                 results['losses'][ln] += l.item()
-
             # 反向传播优化模型
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -139,7 +143,7 @@ def validate(net, device, val_data, batches_per_epoch):
     with torch.no_grad():
         batch_idx = 0
         while batch_idx < (batches_per_epoch):
-            for x, y, idx, rot, zoom_factor in val_data:
+            for x, y, idx, rot, zoom_factor, _ in val_data:
                 batch_idx += 1
                 if batch_idx >= batches_per_epoch:
                     break
@@ -182,6 +186,91 @@ def validate(net, device, val_data, batches_per_epoch):
     return(val_result)
 
 
+def correct_model(epoch, net, device, correct_data, optimizer, batches_per_epoch):
+    # 结果字典，最后返回用
+    results = {
+        'loss': 0,
+        'losses': {
+        }
+    }
+
+    # 训练模式，所有的层和参数都会考虑进来，eval模式下比如dropout这种层会不使能
+    net.train()
+
+    batch_idx = 0
+
+    # 开始样本训练迭代
+    while batch_idx < batches_per_epoch:
+        # 这边就已经读了len(dataset)/batch_size个batch出来了，所以最终一个epoch里面训练过的batch数量是len(dataset)/batch_size*batch_per_epoch个，不，你错了，有个batch_idx来控制的，一个epoch中参与训练的batch就是batch_per_epoch个
+        for x, y, idx, rot, zoom, edges in correct_data:
+            batch_idx += 1
+            if batch_idx >= batches_per_epoch:
+                break
+
+            # 将数据传到GPU
+            xc = x.to(device)
+            yc = [yy.to(device) for yy in y]
+
+            lossdict = net.compute_loss(xc, yc)
+
+            # 获取当前损失
+            loss = lossdict['loss']
+
+            # 打印一下训练过程
+            if batch_idx % 10 == 0:
+                logging.info('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(
+                    epoch, batch_idx, loss.item()))
+
+            # 记录总共的损失
+            results['loss'] += loss.item()
+            # 单独记录各项损失，pos,cos,sin,width
+            for ln, l in lossdict['losses'].items():
+                if ln not in results['losses']:
+                    results['losses'][ln] = 0
+                results['losses'][ln] += l.item()
+            # below is the correct parameter generating code partition 下面是自己想法所添加的部分
+            # 先判断是不是存在典型抓取
+            percent, _ = correct_data.dataset.check_typical(idx,rot,zoom)
+            if percent > 0.70:
+                q_out, ang_out, width_out = post_process(lossdict['pred']['pos'], lossdict['pred']['cos'],
+                                                            lossdict['pred']['sin'], lossdict['pred']['width'])
+                grasp_pres = detect_grasps(q_out, ang_out, width_out)
+
+                edges = correct_data.dataset.get_edges(idx, rot, zoom)
+                if len(grasp_pres) > 0:
+                    for gr in grasp_pres:
+                        gr = gr.as_gr
+                        gr_origin = copy.copy(gr)
+                        i = 0
+                        flag = 0
+                        scale, center, angle = 1.0, [0, 0], 0.0
+                        while i < 100:
+                            gr, flag, img_b, img_a = correct_grasp(edges=copy.copy(edges), gr=gr,idx = idx)
+                            if flag == 1:
+                                break
+                            i += 1
+                            if i % 5 == 0:
+                                gr = scale_width(gr, 1.1)
+                        # 如果修正成功就计算修正参数
+                        if flag:
+                            gr, scale, center, angle = delete_surplus(copy.copy(edges), gr, gr_origin,idx = idx)
+                        # logging.info(str(idx.cpu().data.numpy()), str(scale))
+                        # logging.info(str(center), str(angle))
+                        # 反向传播优化模型
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+    # 计算总共的平均损失
+    results['loss'] /= batch_idx
+
+    # 计算各项的平均损失
+    for l in results['losses']:
+        results['losses'][l] /= batch_idx
+
+    return results
+
+
 def run():
     # 设置输出文件夹
     out_dir = 'trained_models/'
@@ -201,6 +290,13 @@ def run():
     net = GGCNN2(input_channels)
     net = net.to(device)
 
+    # net = GGCNN2(4)
+    # net.load_state_dict(torch.load(os.path.join(ex1_path_07,'210617_0152/model0.927_epoch97_batch_8.pth')))
+    # net = net.to(device)
+
+    eenet = EENET(1)
+    eenet = eenet.to(device)
+
     # 保存网络和训练参数信息
     summary(net, (1*use_depth+3*use_rgb, 300, 300))
     f = open(os.path.join(save_folder, 'arch.txt'), 'w')
@@ -214,23 +310,35 @@ def run():
     # 准备数据集
     # 训练集
     # logging.info('开始构建数据集:{}'.format(time.ctime()))
-    #train_data = Cornell('../cornell',include_rgb = use_rgb, start = 0.0,end = split,random_rotate = r_rotate,random_zoom = r_zoom,output_size=300)
+    # train_data = Cornell('../cornell',include_rgb = use_rgb, start = 0.0,end = split,random_rotate = r_rotate,random_zoom = r_zoom,output_size=300)
     train_data = Jacquard('./jacquard', include_rgb=use_rgb, include_depth=use_depth,start=0.0,
                           end=split, random_rotate=r_rotate, random_zoom=r_zoom, output_size=300)
     train_dataset = torch.utils.data.DataLoader(
         train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     # 验证集
-    #val_data = Cornell('../cornell',include_rgb = use_rgb, start = split,end = 1.0,random_rotate = r_rotate,random_zoom = r_zoom,output_size = 300)
+    # val_data = Cornell('../cornell',include_rgb = use_rgb, start = split,end = 1.0,random_rotate = r_rotate,random_zoom = r_zoom,output_size = 300)
     val_data = Jacquard('./jacquard', include_rgb=use_rgb, include_depth=use_depth, start=split,
                         end=1.0, random_rotate=r_rotate, random_zoom=r_zoom, output_size=300)
     val_dataset = torch.utils.data.DataLoader(
         val_data, batch_size=1, shuffle=False, num_workers=num_workers)
+    
+    # 修正所用的dataset
+    correct_data = Jacquard('./jacquard', include_rgb=use_rgb, include_depth=use_depth, start=0.0,
+                        end=split, random_rotate=r_rotate, random_zoom=r_zoom, output_size=300)
+    correct_dataset = torch.utils.data.DataLoader(
+        correct_data, batch_size=1, shuffle=True, num_workers=num_workers)
 
     # 设置优化器
     optimizer = optim.Adam(net.parameters())
     # 设置tensorboardX
-    tb = tensorboardX.SummaryWriter(os.path.join(save_folder, net_desc))
+    tb = SummaryWriter(log_dir=os.path.join(save_folder, net_desc))
     # 开始主循环
+    # 添加模型图
+    test_img = torch.randn((batch_size, input_channels, 300, 300))
+    tb.add_graph(net, test_img.to(device))
+
+    # 载入模型并训练一定的epoch
+
     for epoch in range(epochs):
         train_results = train(epoch, net, device,
                               train_dataset, optimizer, batches_per_epoch)
@@ -257,10 +365,15 @@ def run():
             max_acc = validate_results['acc']
             torch.save(net.state_dict(), '{0}/model{1}_epoch{2}_batch_{3}.pth'.format(
                 save_folder, str(validate_results['acc'])[0:5], epoch, batch_size))
-    return train_results, validate_results
+
+    # for epoch in range(c_epochs):
+    #     correct_results = correct_model(epoch, net, device,
+    #                           correct_dataset, optimizer, batches_per_epoch)
+    # return train_results, validate_results,correct_results
 
 
 if __name__ == '__main__':
-    use_depth = False
-    use_rgb = True
+    run()
+    run()
+    run()
     run()

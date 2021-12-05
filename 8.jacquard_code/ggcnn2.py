@@ -15,7 +15,6 @@ class GGCNN2(nn.Module):
 
         if dilations is None:
             dilations = [2, 4]
-
         self.features = nn.Sequential(
             # 4 conv layers.
             nn.Conv2d(input_channels, filter_sizes[0], kernel_size=11, stride=1, padding=5, bias=True),

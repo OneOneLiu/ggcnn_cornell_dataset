@@ -4,11 +4,10 @@ Created on Mon Oct 19 11:17:44 2020
 
 @author: LiuDahui
 """
-
-
 from imageio import imread
 import numpy as np
 from skimage.transform import resize,rotate
+import random
 
 class Image:
     '''定义一个图像类，主要功能是将原始的图像输入转化为适合网络训练的格式并根据图像处理需求完成一些其他功能'''
@@ -92,7 +91,16 @@ class DepthImage(Image):
         通过减去均值并修剪至[-1,1]的范围的方式进行正则化,与RGB的处理不同
         """
         self.img = np.clip((self.img - self.img.mean()), -1, 1)
+        self.img = self.img + random.randint(-200,200)/1000.0
+        self.img = self.img + np.random.normal(size = (1024,1024))/200.0
+        self.img = self.img + get_gradation_2d(np.random.randint(0,20),np.random.randint(0,20),1024,1024,np.random.randint(0,2))/100.0
     
     @classmethod
     def from_tiff(cls, fname):
         return cls(imread(fname))
+
+def get_gradation_2d(start, stop, width, height, is_horizontal):
+    if is_horizontal:
+        return np.tile(np.linspace(start, stop, width), (height, 1))
+    else:
+        return np.tile(np.linspace(start, stop, height), (width, 1)).T

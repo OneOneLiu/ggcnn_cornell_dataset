@@ -131,7 +131,7 @@ class Grasp:
             [
                 [1/factor,0],
                 [0,1/factor]
-            ]
+            ],dtype = object
         )
         c = np.array(center).reshape((1,2))
         

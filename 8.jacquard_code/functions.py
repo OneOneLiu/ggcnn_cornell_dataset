@@ -5,13 +5,15 @@ validate部分用到的一些函数汇总
 @author: LiuDahui
 """
 import torch
+import cv2
 from skimage.feature import peak_local_max
 from skimage.filters import gaussian
 from skimage.draw import polygon
 import numpy as np
-import logging#调试
 
-from grasp_pro import Grasp_cpaw
+
+from grasp_pro import Grasp_cpaw,Grasps
+from image_pro import Image
 
 def post_process(pos_img,cos_img,sin_img,width_img):
     '''
@@ -105,3 +107,243 @@ def iou(grasp_pre,grasp_true,angle_threshold = np.pi/6):
     #print(intersection/union)
     return intersection/union
     
+# 下面的是修正参数所需要的函数
+import copy
+
+def show_grasp(img,grasp,color = (0,255,0)):
+    # 给定一张图及一个抓取(Grasps和Grasp类型均可),在图上绘制出抓取框
+    if not isinstance(grasp,Grasps):
+        grasp = Grasps([grasp])
+    for gr in grasp.grs:
+        # 有时候预测出负值会报错
+        try:
+            for i in range(3):
+                cv2.line(img,tuple(gr.points.astype(np.uint32)[i][::-1]),tuple(gr.points.astype(np.uint32)[i+1][::-1]),color,1)
+            cv2.line(img,tuple(gr.points.astype(np.uint32)[3][::-1]),tuple(gr.points.astype(np.uint32)[0][::-1]),color,1)
+        except:
+            pass
+    return img
+def scale_width(gr,scale):
+    grasp_cpaw = Grasp_cpaw(angle=gr.angle,center=gr.center,length=gr.length,width=gr.width)
+    grasp_cpaw.width = grasp_cpaw.width*scale
+    gr = grasp_cpaw.as_gr
+    
+    return gr
+
+def rotate_angle(gr,angle):
+    # 记录原始中心
+    old_center = gr.center
+    # 执行旋转
+    gr.rotate(angle,gr.center)
+    # 将抓取平移到原始的中心
+    grasp_cpaw = Grasp_cpaw(angle=gr.angle,center=old_center,length=gr.length,width=gr.width)
+    gr = grasp_cpaw.as_gr
+    
+    return gr
+
+# [y,x] x为正为向右平移,y为正为向下平移
+def move_position(gr,offest):
+    # 先转正
+    angle = gr.angle
+    old_center = gr.center
+    gr.rotate(-angle,gr.center)
+    grasp_cpaw = Grasp_cpaw(angle=gr.angle,center=old_center,length=gr.length,width=gr.width)
+    gr = grasp_cpaw.as_gr
+    # 执行平移
+    new_center = gr.center+offest
+    # 再转回来
+    old_center = gr.center
+    gr.rotate(angle,gr.center)
+    grasp_cpaw = Grasp_cpaw(angle=gr.angle,center=new_center,length=gr.length,width=gr.width)
+    gr = grasp_cpaw.as_gr
+    
+    return gr
+def correct_grasp(edges,gr,idx):
+    # gr :: type :Grasp
+    
+    # 根据给定抓取从所给边缘图像中裁剪得到五个区域
+    width = gr.width
+    gr_bak = copy.copy(gr)
+    img = Image(edges)
+    a = img.img
+    # 可视化的选项
+    img_b = show_grasp(copy.copy(edges),gr,color = 200)
+    angle = gr.angle
+    center = gr.center
+    img.rotate(-angle,center)
+    # 将抓取也转正
+    gr.rotate(-angle,center)
+    points = gr.points
+    # 裁剪获得抓取框取域图像
+    img.crop(points[0],points[2])
+    try:
+        img.resize((50,100))
+    except:
+        return gr,0,img_b,0
+    # 裁剪获得前10% 后10%和中间的图像
+    img_1 = img.img[:,0:8][0:25,:]
+    img_2 = img.img[:,0:8][25:50,:]
+    img_3 = img.img[:,92:100][0:25,:]
+    img_4 = img.img[:,92:100][25:50,:]
+    # img_middle = img.img[:,10:90]
+    img_middle_l = img.img[:,10:50]
+    img_middle_r = img.img[:,50:90]
+    
+    
+    flag_1 = np.sum(img_1) > 10
+    flag_2 = np.sum(img_2) > 10
+    flag_3 = np.sum(img_3) > 10
+    flag_4 = np.sum(img_4) > 10
+    
+    flag_m_l = np.sum(img_middle_l) > 200
+    flag_m_r = np.sum(img_middle_r) > 200
+    # 修正量定义
+    scale = 1.05
+    m_angle = 0.05
+    # 重新获得原始抓取
+    gr = gr_bak
+    # 先判断中间有没有
+    if flag_m_l and flag_m_r:
+        # print('中间有')
+        # 再分情况探讨四周
+        # 如果四个边都有
+        if flag_1 and flag_2 and flag_3 and flag_4:
+            # print('四边都有,应当放大一下')
+            gr = scale_width(gr,scale)
+
+        # 三个的时候只有旋转
+        # 如果1,2,3或1,3,4或
+        elif (flag_1 and flag_2 and flag_3) or (flag_1 and flag_3 and flag_4):
+            # print('应当顺时针转一下')
+            gr = rotate_angle(gr,-m_angle)
+
+        elif (flag_2 and flag_3 and flag_4) or (flag_1 and flag_2 and flag_4):
+            # print('应当逆时针转一下')
+            gr = rotate_angle(gr,m_angle)
+
+        # 两个的时候有可能平移或者旋转
+        # 如果是2,3或者就顺时针转
+        elif (flag_2 and flag_3):
+            # print('应当顺时针转一下')
+            gr = rotate_angle(gr,-m_angle)
+        # 如果是1,4或者就逆时针转
+        elif (flag_1 and flag_4):
+            # print('应当逆时针转一下')
+            gr = rotate_angle(gr,m_angle)
+        # 如果是3,4就往右移
+        elif (flag_3 and flag_4):
+            # print('应当往右移动')
+            gr = move_position(gr,[0,1])
+        # 如果是1,2就往左移
+        elif (flag_1 and flag_2):
+            # print('应当往左移动')
+            gr = move_position(gr,[0,-1])
+        # 如果是2,4就往下移
+        elif (flag_2 and flag_4):
+            # print('应当往下移动')
+            gr = move_position(gr,[-1,0])
+        # 如果是1,3就往上移
+        elif (flag_1 and flag_3):
+            # print('应当往上移动')
+            gr = move_position(gr,[1,0])
+
+        # 一个的话就都是旋转
+        # 如果是2或3就顺时针旋转
+        elif flag_2 or flag_3:
+            # print('应当顺时针转一下')
+            gr = rotate_angle(gr,-m_angle)
+        # 如果是1或4就逆时针旋转
+        elif flag_1 or flag_4:
+            # print('应当逆时针转一下')
+            gr = rotate_angle(gr,m_angle)
+        else:
+            # print('这是个无碰撞的抓取')
+            img_a = show_grasp(copy.copy(edges),gr,color = 200)
+            cv2.imwrite('c_images/{}_img2_a.png'.format(idx.cpu().data.numpy()),img_a)
+            return gr,1,img_b,img_a
+    else:
+        # print('中间没有,应当放大一下')
+        gr = scale_width(gr,scale)
+        if flag_1 and flag_2 and flag_m_l:
+            # print('应该向左移一下')
+            gr = move_position(gr,[0,-1])
+        if flag_3 and flag_4 and flag_m_r:
+            # print('应该向右移一下')
+            gr = move_position(gr,[0,1])
+        img_a = show_grasp(copy.copy(edges),gr)
+        return gr,0,img_b,img_a
+    img_a = show_grasp(copy.copy(edges),gr,color = 200)
+    return gr,0,img_b,img_a
+
+def delete_surplus(edges,gr,gr_origin,idx):
+    # gr :: type :Grasp
+    # 根据给定抓取从所给边缘图像中裁剪得到五个区域
+    width_o = gr_origin.width
+    width_0 = gr.width
+    gr_bak = copy.copy(gr)
+    angle = gr.angle
+    center = gr.center
+
+    img = Image(copy.copy(edges))
+    img.rotate(-angle,center)
+
+    # 将抓取也转正
+    gr.rotate(-angle,center)
+    points = gr.points
+    # 裁剪获得抓取框取域图像
+    img.crop(points[0],points[2])
+    img.resize((50,100))
+    gr = gr_bak
+    # 裁剪获得前8% 后8%和中间的图像
+    # flag_1_l = np.sum(img.img[:,0:8]) > 10
+    flag_2_l = np.sum(img.img[:,0:16]) > 10
+    flag_3_l = np.sum(img.img[:,0:24]) > 10
+    flag_4_l = np.sum(img.img[:,0:32]) > 10
+    flag_5_l = np.sum(img.img[:,0:40]) > 10
+
+    flag_1_r = np.sum(img.img[:,60:100]) > 10
+    flag_2_r = np.sum(img.img[:,68:100]) > 10
+    flag_3_r = np.sum(img.img[:,76:100]) > 10
+    flag_4_r = np.sum(img.img[:,84:100]) > 10
+    # flag_5_r = np.sum(img.img[:,92:100]) > 10
+
+    l_list = np.array([flag_2_l,flag_3_l,flag_4_l,flag_5_l],dtype = np.int32)
+    r_list = np.array([flag_1_r,flag_2_r,flag_3_r,flag_4_r],dtype = np.int32)
+    zero_l = 4-np.count_nonzero(l_list)
+    zero_r = 4-np.count_nonzero(r_list)
+
+    # 需要削去的百分比例
+    scale = 1 - 0.08*(zero_l + zero_r)
+    # 每个0削去部分的实际宽度除以2就是需要平移的距离
+    step = (gr.width*0.08/2)
+    # print('移动步幅为',step)
+
+    # 削去多余部分
+    # print(gr.width)
+    # print(gr.center)
+    gr = scale_width(gr,scale)
+    # print(gr.width)
+    # print(gr.center)
+    # 执行平移哪边削得少就往哪边平移,坐标0多就是正,往右移,有边0多就是负,往左移
+    move = int(round((zero_l-zero_r)*step))
+    # print(move)
+    gr = move_position(gr,[0,move])
+    # print(gr.width)
+    # print(gr.center)
+    # print(l_list,r_list)
+    # print(scale)
+
+    # print('宽度缩放',gr.width/gr_origin.width)
+    # print('中心偏移',gr_origin.center-gr.center)
+    # print('角度差异',gr_origin.angle-gr.angle)
+    img_a = show_grasp(copy.copy(edges),gr,color = 200)
+    cv2.imwrite('c_images/{}_img3_d.png'.format(idx.cpu().data.numpy()),img_a)
+    width = gr.width
+    width_origin = gr_origin.width
+    angle = gr.angle
+    origin_angle = gr_origin.angle
+    center = gr.center
+    origin_center = gr_origin.center
+    img_origin = show_grasp(copy.copy(edges),gr_origin,color = 200)
+    cv2.imwrite('c_images/{}_img1_origin.png'.format(idx.cpu().data.numpy()),img_origin)
+    return gr,gr.width/gr_origin.width,gr.center-gr_origin.center,gr.angle-gr_origin.angle

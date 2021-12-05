@@ -1,0 +1,3 @@
+在加入prob损失的基础上,添加了patch loss并开始训练
+
+validate的时候位置选取是基于pos_pred

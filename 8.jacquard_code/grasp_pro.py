@@ -7,6 +7,7 @@ Created on Fri Aug 21 09:23:54 2020
 
 
 import numpy as np
+import math
 from skimage.draw import polygon
 
 
@@ -241,6 +242,56 @@ class Grasps:
                 width_out[rr,cc] = gr.width
 
         return pos_out,angle_out,width_out
+    def generate_img_n(self,pos = True,angle = True,width = True,shape = (300,300)):
+        '''
+        :功能       :将本对象的多个的抓取框信息融合并生成指定的映射图，以这种方式返回定义一个抓取的多个参数，包括中心点，角度，宽度
+        :参数 pos   :bool,是否生成返回位置映射图
+        :参数 angle :bool,是否生成返回角度映射图
+        :参数 width :bool,是否生成返回夹爪宽度映射图
+        :参数 shape :tuple
+        :返回       :融合本对象的多个抓取框信息的映射图
+        '''
+        
+        if pos:
+            pos_out = np.zeros(shape)
+        else:
+            pos_out = None
+        if angle:
+            angle_out = np.zeros(shape)
+        else:
+            angle_out = None
+        if width:
+            width_out = np.zeros(shape)
+        else:
+            width_out = None
+        grs_center = self.center
+        max_d = self.cal_pos_dis(grs_center)
+        for gr in self.grs:
+            rr,cc = gr.compact_polygon_coords(shape)#shape的指定还是很重要的，可以考虑图像边界
+            if pos:
+                pos_out[rr,cc] = self.cal_pos_intensity(grs_center,gr,max_d)
+            if angle:
+                angle_out[rr,cc] = gr.angle
+            if width:
+                width_out[rr,cc] = gr.width
+
+        return pos_out,angle_out,width_out
+    def cal_pos_dis(self,grs_center):
+        distances = []
+        for gr in self.grs:
+            x = grs_center[0]-gr.center[0]
+            y = grs_center[1]-gr.center[1]
+            distances.append(round(math.sqrt(x**2+y**2),3))
+        return max(distances)
+    def cal_pos_intensity(self,grs_center,gr,max_d):
+        x = grs_center[0]-gr.center[0]
+        y = grs_center[1]-gr.center[1]
+        distance = round(math.sqrt(x**2+y**2),3)
+        if max_d == 0:
+            print(max_d)
+            return 1
+        intensity = round(2-round(distance/max_d,3))
+        return intensity
     @property
     def points(self):
         '''

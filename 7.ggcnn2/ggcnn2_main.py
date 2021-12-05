@@ -19,6 +19,7 @@ import sys
 import logging
 #导入自定义包
 from ggcnn2_new import GGCNN2
+from ggcnn import GGCNN
 from cornell_pro import Cornell
 from functions import post_process,detect_grasps,max_iou
 from image_pro import Image
@@ -26,9 +27,9 @@ from image_pro import Image
 #一些训练参数的设定
 dataset = 'cornell'
 batch_size = 16
-batches_per_epoch = 1000
-epochs = 25
-lr = 0.001
+batches_per_epoch = 100
+epochs = 250
+lr = 0.00001
 num_workers = 6
 val_batches = 250
 
@@ -81,7 +82,7 @@ def train(epoch,net,device,train_data,optimizer,batches_per_epoch):
             loss = lossdict['loss']
             
             #打印一下训练过程
-            if batch_idx % 100 == 0:
+            if batch_idx % 10 == 0:
                 logging.info('Epoch: {}, Batch: {}, Loss: {:0.4f}'.format(epoch, batch_idx, loss.item()))
             
             #记录总共的损失
@@ -171,7 +172,7 @@ def validate(net,device,val_data,batches_per_epoch,vis = False):
             
         #print('acc:{}'.format(val_result['correct']/(batches_per_epoch*batch_size)))绝对的计算方法不清楚总数是多少，那就用相对的方法吧
         acc = val_result['correct']/(val_result['correct']+val_result['failed'])
-        logging.info('acc:{}'.format(acc))
+        logging.info('{}/{} acc:{}'.format(val_result['correct'],val_batches,acc))
         val_result['acc'] = acc
     return(val_result)
 
