@@ -5,7 +5,6 @@ from matplotlib.ticker import FuncFormatter
 import numpy as np
 import re
 
-
 font1 = {'family': 'Nimbus Roman',
         'weight': 'normal',
         'style':'normal',
@@ -136,7 +135,7 @@ def visual_acc_ex(filepath,dis = True,smooth = False):
     acc = re.findall('iou_acc:.+= (\d.\d{4})',log)
     p_acc = re.findall('perfect_acc:.+= (\d.\d{4})',log)
     true_accs = []
-    for i in range(20):
+    for i in range(2):
         true_acc = re.findall('edge_'+str(i)+':.+= (0.\d{4})',log)
         true_accs.append(true_acc)
     acc  = np.asarray(acc).astype(np.float)
@@ -241,12 +240,12 @@ def to_percent(temp, position):
     return '%1.0f'%(100*temp) + '%'
 
 # 绘制三个曲线图
-filepath = 'output/models/211130_2307_/logger.log'
+# filepath = 'output/models/211130_2307_/logger.log'
 
-accuracies = visual_acc_3_value(filepath,smooth=False)
+# accuracies = visual_acc_3_value(filepath,smooth=False)
 
 # 以前的图测试
 
-# filepath = 'output/raw_ggcnn/211129_1952_/logger.log'
+filepath = 'output/models/211209_1954_/logger.log'
 
-# accuracies = visual_acc_ex(filepath,smooth=False)
+accuracies = visual_acc_ex(filepath,smooth=False)

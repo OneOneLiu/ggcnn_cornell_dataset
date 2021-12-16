@@ -1,5 +1,5 @@
 '''
-这个版本的主要修改在于给角度和宽度添加了filter过滤,相当于做了一层隔离,希望能好
+这个版本: 不冻结前面的参数,也不添加蒙板过滤,就看直接添加patch loss的影响
 '''
 
 import torch
@@ -13,6 +13,8 @@ import numpy as np
 
 from utils.dataset_processing.evaluation import get_edge, show_grasp
 from utils.dataset_processing.grasp import Grasp
+
+patch_size = 5
 
 class GGCNN2(nn.Module):
     def __init__(self, input_channels=1, filter_sizes=None, l3_k_size=5, dilations=None):
@@ -60,10 +62,6 @@ class GGCNN2(nn.Module):
         self.cos_output = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
         self.sin_output = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
         self.width_output = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
-        
-        self.max2d_cos = MaxFiltering(16)
-        self.max2d_sin = MaxFiltering(16)
-        self.max2d_width = MaxFiltering(16)
 
         self.filter = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
         self.filter_cos = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
@@ -74,25 +72,19 @@ class GGCNN2(nn.Module):
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 nn.init.xavier_uniform_(m.weight, gain=1)
 
-    def forward(self, x):
-        with torch.no_grad():
-            x = self.features(x)
-
+    def forward(self, x, include_patch = 1):
+        x = self.features(x)
         pos_output = self.pos_output(x)
         cos_output = self.cos_output(x)
         sin_output = self.sin_output(x)
         width_output = self.width_output(x)
 
         filter = self.filter(x)
-        filter_cos = self.filter_cos(self.max2d_cos(x))
-        filter_sin = self.filter_sin(self.max2d_sin(x))
-        filter_width = self.filter_width(self.max2d_width(x))
 
-        return pos_output, cos_output, sin_output, width_output, filter, filter_cos, filter_sin, filter_width
-
-    def compute_loss(self, xc, yc):
+        return pos_output, cos_output, sin_output, width_output, filter
+    def compute_loss(self, xc, yc, include_patch = 1):
         y_pos, y_cos, y_sin, y_width, mask_prob, y_height = yc
-        pos_pred, cos_pred, sin_pred, width_pred, filter, filter_cos, filter_sin, filter_width = self(xc)
+        pos_pred, cos_pred, sin_pred, width_pred, filter = self(xc, include_patch = include_patch)
 
         p_loss = F.mse_loss(pos_pred, y_pos)
         cos_loss = F.mse_loss(cos_pred, y_cos)
@@ -103,21 +95,16 @@ class GGCNN2(nn.Module):
 
         prob_loss = F.mse_loss(prob,mask_prob)
 
-        filtered_cos = filter_cos.sigmoid() * cos_pred
-        filtered_sin = filter_sin.sigmoid() * sin_pred
-        filtered_width = filter_width.sigmoid() * width_pred
+        prediction = (pos_pred, cos_pred, sin_pred, width_pred)
 
-        cos_loss1 = F.mse_loss(filtered_cos, y_cos) * 0.1
-        sin_loss1 = F.mse_loss(filtered_sin, y_sin) * 0.1
-        width_loss1 = F.mse_loss(filtered_width, y_width) * 0.1
-
-        prediction = (prob,filtered_cos,filtered_sin,filtered_width)
-        gt_patches,pre_patches = self.get_patch_no_dis(prediction, y_height)
-
-        patch_loss = F.mse_loss(pre_patches, gt_patches)
-
+        if include_patch:
+            gt_patches, pre_patches = self.get_patch_no_dis(prediction, y_height)
+            patch_loss = F.mse_loss(pre_patches, gt_patches)
+            loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss + patch_loss
+        else:
+            loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss
         return {
-            'loss': p_loss + cos_loss + sin_loss + width_loss + prob_loss + cos_loss1 + sin_loss1 + width_loss1 + patch_loss,
+            'loss': loss,
             'losses': {
                 'p_loss': p_loss,
                 'cos_loss': cos_loss,
@@ -125,10 +112,11 @@ class GGCNN2(nn.Module):
                 'width_loss': width_loss
             },
             'pred': {
-                'pos': prob,
-                'cos': filtered_cos,
-                'sin': filtered_sin,
-                'width': filtered_width
+                'pos': pos_pred,
+                'cos': cos_pred,
+                'sin': sin_pred,
+                'width': width_pred,
+                'prob' : prob,
             }
         }
     def get_patch_no_dis(self,prediction,mask_height):
@@ -194,16 +182,18 @@ class GGCNN2(nn.Module):
 
             y,x,scale = get_patch_params(i,y,x,selected_edge,width_patch,angle,directions,left_right_diff,top_bottom_diff)
 
+            left_margin = patch_size // 2
+            right_margin = patch_size // 2 + 1
             # 先裁剪出原始的预测图
-            pre_patch = torch.stack([prob[i][0][y-2:y+3,x-2:x+3],
-                                    cos_img[i][0][y-2:y+3,x-2:x+3],
-                                    sin_img[i][0][y-2:y+3,x-2:x+3],
-                                    width_img[i][0][y-2:y+3,x-2:x+3]])
+            pre_patch = torch.stack([prob[i][0][y-left_margin:y+right_margin,x-left_margin:x+right_margin],
+                                    cos_img[i][0][y-left_margin:y+right_margin,x-left_margin:x+right_margin],
+                                    sin_img[i][0][y-left_margin:y+right_margin,x-left_margin:x+right_margin],
+                                    width_img[i][0][y-left_margin:y+right_margin,x-left_margin:x+right_margin]])
             
-            gt_patch = torch.stack([pre_patch[0].new_full((5,5),1),
-                                    pre_patch[1].new_full((5,5),float(cos_patch)),
-                                    pre_patch[2].new_full((5,5),float(sin_patch)),
-                                    pre_patch[3].new_full((5,5),float((width_patch*scale)))])
+            gt_patch = torch.stack([pre_patch[0].new_full((patch_size,patch_size),1),
+                                    pre_patch[1].new_full((patch_size,patch_size),float(cos_patch)),
+                                    pre_patch[2].new_full((patch_size,patch_size),float(sin_patch)),
+                                    pre_patch[3].new_full((patch_size,patch_size),float((width_patch*scale)))])
             # NOTE 调使用
             # image = mask_height[i]
             # index = indexes[i]
@@ -423,7 +413,7 @@ def get_patch_params(i,old_y,old_x,selected_edge,width_patch,angle,directions,le
     scale = 1
     if selected_edge * width_patch * 1.50 < 3:
         scale = 1.2
-    elif selected_edge * width_patch * 1.50 < 5:
+    elif selected_edge * width_patch * 1.50 < 7:
         scale = 1.1
     elif selected_edge * width_patch * 1.50 > 20:
         scale = 0.8
@@ -456,10 +446,10 @@ def get_patch_params(i,old_y,old_x,selected_edge,width_patch,angle,directions,le
         delta_y = -step * np.sin(angle + np.pi / 2)
         y = int(old_y + delta_y)
         x = int(old_x + delta_x)
-    y = min(296,y)
-    y = max(2,y)
-    x = min(296,x)
-    x = max(2,x)
+    y = min(300-patch_size//2 - 1,y)
+    y = max(0+patch_size//2 + 1,y)
+    x = min(300-patch_size//2 - 1,x)
+    x = max(0+patch_size//2 + 1,x)
 
     return y,x,scale
 

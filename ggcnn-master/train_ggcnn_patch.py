@@ -41,7 +41,7 @@ logger.addHandler(fh)
 
 pretrain = False
 load_part = False
-model_path = 'output/models/211126_2004_/epoch_46_iou_0.87_statedict.pt'
+model_path = 'output/models/211130_2307_/epoch_71_iou_0.86_statedict.pt'
 
 logger.info('Pretrain:' + str(pretrain))
 if pretrain:
@@ -49,17 +49,18 @@ if pretrain:
 
 # patch_size = input("patch_size")
 # logger.info('patch_size:' + str([patch_size]))
-
+map_list = ['pos','prob','patch']
+map_list = ['pos','prob']
 def parse_args():
     parser = argparse.ArgumentParser(description='Train GG-CNN')
 
     # Network
-    parser.add_argument('--network', type=str, default='ggcnn2_patch_v4', help='Network Name in .models')
+    parser.add_argument('--network', type=str, default='ggcnn2_patch_v2', help='Network Name in .models')
 
     # Dataset & Data & Training5
     parser.add_argument('--dataset', default='jacquard_t',type=str, help='Dataset Name ("cornell" or "jaquard")')
     parser.add_argument('--dataset-path', default = './jacquard',type=str, help='Path to dataset')
-    parser.add_argument('--ADJ', default = 0,type=int, help='Whether to use ADJ dataset')
+    parser.add_argument('--ADJ', default = 1,type=int, help='Whether to use ADJ dataset')
     parser.add_argument('--ADJtrain-path', default =
      'train_ADJ.npy',type=str, help='Path to dataset')
     parser.add_argument('--ADJtest-path', default = 'test_ADJ.npy',type=str, help='Path to dataset')
@@ -75,12 +76,6 @@ def parse_args():
     parser.add_argument('--batches-per-epoch', type=int, default=300, help='Batches per Epoch')
     parser.add_argument('--val-batches', type=int, default=250, help='Validation Batches')
 
-    # Validating
-    parser.add_argument('--position', type=str, default='pos', help='position img used whilt validating')
-    parser.add_argument('--ang_cos', type=str, default='cos', help='angle cos img used whilt validating')
-    parser.add_argument('--ang_sin', type=str, default='sin', help='angle_sin img used whilt validating')
-    parser.add_argument('--width', type=str, default='width', help='width img used whilt validating')
-    
     # Logging etc.
     parser.add_argument('--description', type=str, default='', help='Training description')
     parser.add_argument('--outdir', type=str, default='output/models/', help='Training Output Directory')
@@ -101,7 +96,6 @@ def validate(net, device, val_data, batches_per_epoch):
     """
     net.eval()
 
-    
     results = {
         # 基于原始的四个映射图
         'pos':
@@ -162,7 +156,7 @@ def validate(net, device, val_data, batches_per_epoch):
                     results['pos']['losses'][ln] += l.item()/ld
                 
                 # 基于两个映射图进行不同的预测
-                for pos in ['pos','prob','patch']:
+                for pos in map_list:
                     if pos == 'patch':
                         q_out, ang_out, w_out = post_process_output(lossd['pred']['prob'], lossd['pred']['filtered_cos'],
                                                                 lossd['pred']['filtered_sin'], lossd['pred']['filtered_width'])
@@ -266,12 +260,38 @@ def train(epoch, net, device, train_data, optimizer, batches_per_epoch, vis=Fals
 
     return results
 
+def print_result(val_results, patch = False):
+    test_results = val_results['pos']
+    test_results_prob = val_results['prob']
+    test_results_patch = val_results['patch']
+
+    # 输出信息到屏幕
+    logger.info('iou_acc:%d/%d = %f' % (test_results['correct'], test_results['correct'] + test_results['failed'],
+                                test_results['correct']/(test_results['correct']+test_results['failed'])))
+    for i in range(2):
+        logger.info('edge_%d:%d/%d = %f' % (i,test_results['positive_'+str(i)], test_results['positive_'+str(i)] + test_results['negative_'+str(i)],test_results['positive_'+str(i)]/(test_results['positive_'+str(i)]+test_results['negative_'+str(i)])))
+
+    logger.info('perfect_acc:%d/%d = %f' % (test_results['perfect'], test_results['perfect'] + test_results['not_perfect'],test_results['perfect']/(test_results['perfect']+test_results['not_perfect'])))
+
+    # 输出第二个结果
+    logger.info('iou_prob_acc:%d/%d = %f' % (test_results_prob['correct'], test_results_prob['correct'] + test_results_prob['failed'],
+                                test_results_prob['correct']/(test_results_prob['correct']+test_results_prob['failed'])))
+    for i in range(2):
+        logger.info('edge_prob_%d:%d/%d = %f' % (i,test_results_prob['positive_'+str(i)], test_results_prob['positive_'+str(i)] + test_results_prob['negative_'+str(i)],test_results_prob['positive_'+str(i)]/(test_results_prob['positive_'+str(i)]+test_results_prob['negative_'+str(i)])))
+
+    logger.info('perfect_prob_acc:%d/%d = %f' % (test_results_prob['perfect'], test_results_prob['perfect'] + test_results_prob['not_perfect'],test_results_prob['perfect']/(test_results_prob['perfect']+test_results_prob['not_perfect'])))
+    if patch:
+        # 输出第三个结果
+        logger.info('iou_patch_acc:%d/%d = %f' % (test_results_patch['correct'], test_results_patch['correct'] + test_results_patch['failed'],test_results_patch['correct']/(test_results_patch['correct']+test_results_patch['failed'])))
+        for i in range(2):
+            logger.info('edge_patch_%d:%d/%d = %f' % (i,test_results_patch['positive_'+str(i)], test_results_patch['positive_'+str(i)] + test_results_patch['negative_'+str(i)],test_results_patch['positive_'+str(i)]/(test_results_patch['positive_'+str(i)]+test_results_patch['negative_'+str(i)])))
+
+        logger.info('perfect_patch_acc:%d/%d = %f' % (test_results_patch['perfect'], test_results_patch['perfect'] + test_results_patch['not_perfect'],test_results_patch['perfect']/(test_results_patch['perfect']+test_results_patch['not_perfect'])))
 
 def run():
     args = parse_args()
     logger.info(args)
     # Vis window
-    print(os.getcwd())
     if args.vis:
         cv2.namedWindow('Display', cv2.WINDOW_NORMAL)
 
@@ -291,7 +311,7 @@ def run():
         num_workers=args.num_workers
     )
     val_dataset = Dataset(args.dataset_path, start=args.split, end=1.0, ds_rotate=args.ds_rotate,
-                          random_rotate=True, random_zoom=True,ADJ = 0, npy_path = args.ADJtest_path,
+                          random_rotate=True, random_zoom=True,ADJ = args.ADJ, npy_path = args.ADJtest_path,
                           include_depth=args.use_depth, include_rgb=args.use_rgb)
     val_data = torch.utils.data.DataLoader(
         val_dataset,
@@ -331,33 +351,9 @@ def run():
     # 先validate10次
     if pretrain:
         for i in range(10):
-            logger.info('Validating...')
+            logger.info('{0}_Validating...'.format(i))
             val_results = validate(net, device, val_data, args.val_batches)
-            test_results = val_results['pos']
-            test_results_prob = val_results['prob']
-            test_results_patch = val_results['patch']
-
-            # 输出信息到屏幕
-            logger.info('iou_acc:%d/%d = %f' % (test_results['correct'], test_results['correct'] + test_results['failed'],
-                                        test_results['correct']/(test_results['correct']+test_results['failed'])))
-            for i in range(20):
-                logger.info('edge_%d:%d/%d = %f' % (i,test_results['positive_'+str(i)], test_results['positive_'+str(i)] + test_results['negative_'+str(i)],test_results['positive_'+str(i)]/(test_results['positive_'+str(i)]+test_results['negative_'+str(i)])))
-
-            logger.info('perfect_acc:%d/%d = %f' % (test_results['perfect'], test_results['perfect'] + test_results['not_perfect'],test_results['perfect']/(test_results['perfect']+test_results['not_perfect'])))
-
-            # 输出第二个结果
-            logger.info('iou_prob_acc:%d/%d = %f' % (test_results_prob['correct'], test_results_prob['correct'] + test_results_prob['failed'],
-                                        test_results_prob['correct']/(test_results_prob['correct']+test_results_prob['failed'])))
-            for i in range(20):
-                logger.info('edge_prob_%d:%d/%d = %f' % (i,test_results_prob['positive_'+str(i)], test_results_prob['positive_'+str(i)] + test_results_prob['negative_'+str(i)],test_results_prob['positive_'+str(i)]/(test_results_prob['positive_'+str(i)]+test_results_prob['negative_'+str(i)])))
-
-            logger.info('perfect_prob_acc:%d/%d = %f' % (test_results_prob['perfect'], test_results_prob['perfect'] + test_results_prob['not_perfect'],test_results_prob['perfect']/(test_results_prob['perfect']+test_results_prob['not_perfect'])))
-            # 输出第三个结果
-            logger.info('iou_patch_acc:%d/%d = %f' % (test_results_patch['correct'], test_results_patch['correct'] + test_results_patch['failed'],test_results_patch['correct']/(test_results_patch['correct']+test_results_patch['failed'])))
-            for i in range(20):
-                logger.info('edge_patch_%d:%d/%d = %f' % (i,test_results_patch['positive_'+str(i)], test_results_patch['positive_'+str(i)] + test_results_patch['negative_'+str(i)],test_results_patch['positive_'+str(i)]/(test_results_patch['positive_'+str(i)]+test_results_patch['negative_'+str(i)])))
-
-            logger.info('perfect_patch_acc:%d/%d = %f' % (test_results_patch['perfect'], test_results_patch['perfect'] + test_results_patch['not_perfect'],test_results_patch['perfect']/(test_results_patch['perfect']+test_results_patch['not_perfect'])))
+            print_result(val_results,patch = False)
     for epoch in range(args.epochs):
         logger.info('Beginning Epoch {:02d}'.format(epoch))
         train_results = train(epoch, net, device, train_data, optimizer, args.batches_per_epoch, vis=args.vis)
@@ -371,30 +367,7 @@ def run():
         logger.info('Validating...')
         val_results = validate(net, device, val_data, args.val_batches)
         test_results = val_results['pos']
-        test_results_prob = val_results['prob']
-        test_results_patch = val_results['patch']
-
-        # 输出信息到屏幕
-        logger.info('iou_acc:%d/%d = %f' % (test_results['correct'], test_results['correct'] + test_results['failed'],
-                                     test_results['correct']/(test_results['correct']+test_results['failed'])))
-        for i in range(20):
-            logger.info('edge_%d:%d/%d = %f' % (i,test_results['positive_'+str(i)], test_results['positive_'+str(i)] + test_results['negative_'+str(i)],test_results['positive_'+str(i)]/(test_results['positive_'+str(i)]+test_results['negative_'+str(i)])))
-
-        logger.info('perfect_acc:%d/%d = %f' % (test_results['perfect'], test_results['perfect'] + test_results['not_perfect'],test_results['perfect']/(test_results['perfect']+test_results['not_perfect'])))
-
-        # 输出第二个结果
-        logger.info('iou_prob_acc:%d/%d = %f' % (test_results_prob['correct'], test_results_prob['correct'] + test_results_prob['failed'],
-                                     test_results_prob['correct']/(test_results_prob['correct']+test_results_prob['failed'])))
-        for i in range(20):
-            logger.info('edge_prob_%d:%d/%d = %f' % (i,test_results_prob['positive_'+str(i)], test_results_prob['positive_'+str(i)] + test_results_prob['negative_'+str(i)],test_results_prob['positive_'+str(i)]/(test_results_prob['positive_'+str(i)]+test_results_prob['negative_'+str(i)])))
-
-        logger.info('perfect_prob_acc:%d/%d = %f' % (test_results_prob['perfect'], test_results_prob['perfect'] + test_results_prob['not_perfect'],test_results_prob['perfect']/(test_results_prob['perfect']+test_results_prob['not_perfect'])))
-        # 输出第三个结果
-        logger.info('iou_patch_acc:%d/%d = %f' % (test_results_patch['correct'], test_results_patch['correct'] + test_results_patch['failed'],test_results_patch['correct']/(test_results_patch['correct']+test_results_patch['failed'])))
-        for i in range(20):
-            logger.info('edge_patch_%d:%d/%d = %f' % (i,test_results_patch['positive_'+str(i)], test_results_patch['positive_'+str(i)] + test_results_patch['negative_'+str(i)],test_results_patch['positive_'+str(i)]/(test_results_patch['positive_'+str(i)]+test_results_patch['negative_'+str(i)])))
-
-        logger.info('perfect_patch_acc:%d/%d = %f' % (test_results_patch['perfect'], test_results_patch['perfect'] + test_results_patch['not_perfect'],test_results_patch['perfect']/(test_results_patch['perfect']+test_results_patch['not_perfect'])))
+        print_result(val_results,patch = False)
 
 
         # Log validation results to tensorbaord

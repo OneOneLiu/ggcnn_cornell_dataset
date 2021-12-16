@@ -113,12 +113,12 @@ class GGCNN2(nn.Module):
 
         prediction = (prob,filtered_cos,filtered_sin,filtered_width)
 
-        loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss + cos_loss1 + sin_loss1 + width_loss1
-
         if include_patch:
             gt_patches, pre_patches = self.get_patch_no_dis(prediction, y_height)
             patch_loss = F.mse_loss(pre_patches, gt_patches)
-            loss = loss + patch_loss
+            loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss + cos_loss1 + sin_loss1 + width_loss1 + patch_loss
+        else:
+            loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss + cos_loss1 + sin_loss1 + width_loss1
         return {
             'loss': loss,
             'losses': {

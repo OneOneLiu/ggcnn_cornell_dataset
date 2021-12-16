@@ -59,13 +59,13 @@ def parse_args():
     parser.add_argument('--num-workers', type=int, default=8, help='Dataset workers')
 
     parser.add_argument('--batch-size', type=int, default=8, help='Batch size')
-    parser.add_argument('--epochs', type=int, default=100, help='Training epochs')
+    parser.add_argument('--epochs', type=int, default=50, help='Training epochs')
     parser.add_argument('--batches-per-epoch', type=int, default=300, help='Batches per Epoch')
     parser.add_argument('--val-batches', type=int, default=250, help='Validation Batches')
 
     # Logging etc.
     parser.add_argument('--description', type=str, default='', help='Training description')
-    parser.add_argument('--outdir', type=str, default='output/models/', help='Training Output Directory')
+    parser.add_argument('--outdir', type=str, default='output/raw_ggcnn/', help='Training Output Directory')
     parser.add_argument('--logdir', type=str, default='tensorboard/', help='Log directory')
     parser.add_argument('--vis', action='store_true', help='Visualise the training process')
 
@@ -241,7 +241,7 @@ def run():
         num_workers=args.num_workers
     )
     val_dataset = Dataset(args.dataset_path, start=args.split, end=1.0, ds_rotate=args.ds_rotate,
-                          random_rotate=True, random_zoom=True,ADJ = 0, npy_path = args.ADJtest_path,
+                          random_rotate=True, random_zoom=True,ADJ = args.ADJ, npy_path = args.ADJtest_path,
                           include_depth=args.use_depth, include_rgb=args.use_rgb)
     val_data = torch.utils.data.DataLoader(
         val_dataset,
