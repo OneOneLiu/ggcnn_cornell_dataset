@@ -58,7 +58,7 @@ def parse_args():
     parser.add_argument('--network', type=str, default='ggcnn2_patch_v2', help='Network Name in .models')
 
     # Dataset & Data & Training5
-    parser.add_argument('--dataset', default='jacquard_t',type=str, help='Dataset Name ("cornell" or "jaquard")')
+    parser.add_argument('--dataset', default='jacquard',type=str, help='Dataset Name ("cornell" or "jaquard")')
     parser.add_argument('--dataset-path', default = './jacquard',type=str, help='Path to dataset')
     parser.add_argument('--ADJ', default = 1,type=int, help='Whether to use ADJ dataset')
     parser.add_argument('--ADJtrain-path', default =
@@ -261,6 +261,7 @@ def train(epoch, net, device, train_data, optimizer, batches_per_epoch, vis=Fals
     return results
 
 def print_result(val_results, patch = False):
+    edge_num = 20 # 打印多少个edge的结果
     test_results = val_results['pos']
     test_results_prob = val_results['prob']
     test_results_patch = val_results['patch']
@@ -268,7 +269,7 @@ def print_result(val_results, patch = False):
     # 输出信息到屏幕
     logger.info('iou_acc:%d/%d = %f' % (test_results['correct'], test_results['correct'] + test_results['failed'],
                                 test_results['correct']/(test_results['correct']+test_results['failed'])))
-    for i in range(2):
+    for i in range(edge_num):
         logger.info('edge_%d:%d/%d = %f' % (i,test_results['positive_'+str(i)], test_results['positive_'+str(i)] + test_results['negative_'+str(i)],test_results['positive_'+str(i)]/(test_results['positive_'+str(i)]+test_results['negative_'+str(i)])))
 
     logger.info('perfect_acc:%d/%d = %f' % (test_results['perfect'], test_results['perfect'] + test_results['not_perfect'],test_results['perfect']/(test_results['perfect']+test_results['not_perfect'])))
@@ -276,14 +277,14 @@ def print_result(val_results, patch = False):
     # 输出第二个结果
     logger.info('iou_prob_acc:%d/%d = %f' % (test_results_prob['correct'], test_results_prob['correct'] + test_results_prob['failed'],
                                 test_results_prob['correct']/(test_results_prob['correct']+test_results_prob['failed'])))
-    for i in range(2):
+    for i in range(edge_num):
         logger.info('edge_prob_%d:%d/%d = %f' % (i,test_results_prob['positive_'+str(i)], test_results_prob['positive_'+str(i)] + test_results_prob['negative_'+str(i)],test_results_prob['positive_'+str(i)]/(test_results_prob['positive_'+str(i)]+test_results_prob['negative_'+str(i)])))
 
     logger.info('perfect_prob_acc:%d/%d = %f' % (test_results_prob['perfect'], test_results_prob['perfect'] + test_results_prob['not_perfect'],test_results_prob['perfect']/(test_results_prob['perfect']+test_results_prob['not_perfect'])))
     if patch:
         # 输出第三个结果
         logger.info('iou_patch_acc:%d/%d = %f' % (test_results_patch['correct'], test_results_patch['correct'] + test_results_patch['failed'],test_results_patch['correct']/(test_results_patch['correct']+test_results_patch['failed'])))
-        for i in range(2):
+        for i in range(edge_num):
             logger.info('edge_patch_%d:%d/%d = %f' % (i,test_results_patch['positive_'+str(i)], test_results_patch['positive_'+str(i)] + test_results_patch['negative_'+str(i)],test_results_patch['positive_'+str(i)]/(test_results_patch['positive_'+str(i)]+test_results_patch['negative_'+str(i)])))
 
         logger.info('perfect_patch_acc:%d/%d = %f' % (test_results_patch['perfect'], test_results_patch['perfect'] + test_results_patch['not_perfect'],test_results_patch['perfect']/(test_results_patch['perfect']+test_results_patch['not_perfect'])))

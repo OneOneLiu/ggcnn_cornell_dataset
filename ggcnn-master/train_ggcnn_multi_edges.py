@@ -221,7 +221,7 @@ def run():
     args = parse_args()
     logger.info(args)
     # Vis window
-    print(os.getcwd())
+
     if args.vis:
         cv2.namedWindow('Display', cv2.WINDOW_NORMAL)
 

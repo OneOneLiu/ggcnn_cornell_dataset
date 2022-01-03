@@ -246,6 +246,6 @@ def to_percent(temp, position):
 
 # 以前的图测试
 
-filepath = 'output/models/211209_1954_/logger.log'
+filepath = 'output/raw_ggcnn/220102_2318_/logger.log'
 
 accuracies = visual_acc_ex(filepath,smooth=False)

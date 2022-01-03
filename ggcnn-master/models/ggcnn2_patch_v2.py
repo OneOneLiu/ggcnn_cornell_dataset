@@ -82,6 +82,7 @@ class GGCNN2(nn.Module):
         filter = self.filter(x)
 
         return pos_output, cos_output, sin_output, width_output, filter
+                     
     def compute_loss(self, xc, yc, include_patch = 1):
         y_pos, y_cos, y_sin, y_width, mask_prob, y_height = yc
         pos_pred, cos_pred, sin_pred, width_pred, filter = self(xc, include_patch = include_patch)
