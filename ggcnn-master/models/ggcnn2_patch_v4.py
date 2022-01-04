@@ -118,7 +118,7 @@ class GGCNN2(nn.Module):
             patch_loss = F.mse_loss(pre_patches, gt_patches)
             loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss + cos_loss1 + sin_loss1 + width_loss1 + patch_loss
         else:
-            loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss + cos_loss1 + sin_loss1 + width_loss1
+            loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss
         return {
             'loss': loss,
             'losses': {

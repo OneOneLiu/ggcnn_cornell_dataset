@@ -55,7 +55,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train GG-CNN')
 
     # Network
-    parser.add_argument('--network', type=str, default='ggcnn2_patch_v2', help='Network Name in .models')
+    parser.add_argument('--network', type=str, default='ggcnn2_patch_v4', help='Network Name in .models')
 
     # Dataset & Data & Training5
     parser.add_argument('--dataset', default='jacquard',type=str, help='Dataset Name ("cornell" or "jaquard")')

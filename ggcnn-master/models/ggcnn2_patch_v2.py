@@ -82,7 +82,7 @@ class GGCNN2(nn.Module):
         filter = self.filter(x)
 
         return pos_output, cos_output, sin_output, width_output, filter
-                     
+
     def compute_loss(self, xc, yc, include_patch = 1):
         y_pos, y_cos, y_sin, y_width, mask_prob, y_height = yc
         pos_pred, cos_pred, sin_pred, width_pred, filter = self(xc, include_patch = include_patch)
@@ -96,9 +96,8 @@ class GGCNN2(nn.Module):
 
         prob_loss = F.mse_loss(prob,mask_prob)
 
-        prediction = (pos_pred, cos_pred, sin_pred, width_pred)
-
         if include_patch:
+            prediction = (pos_pred, cos_pred, sin_pred, width_pred)
             gt_patches, pre_patches = self.get_patch_no_dis(prediction, y_height)
             patch_loss = F.mse_loss(pre_patches, gt_patches)
             loss = p_loss + cos_loss + sin_loss + width_loss + prob_loss + patch_loss
