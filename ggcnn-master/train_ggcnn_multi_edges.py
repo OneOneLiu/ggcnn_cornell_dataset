@@ -26,7 +26,7 @@ from models.common import post_process_output
 dt = datetime.datetime.now().strftime('%y%m%d_%H%M')
 net_desc = '{}_{}'.format(dt, '_'.join(''))
 
-save_folder = os.path.join('output/raw_ggcnn/', net_desc)
+save_folder = os.path.join('output/1.raw_ggcnn/', net_desc)
 if not os.path.exists(save_folder):
     os.makedirs(save_folder)
 
@@ -45,8 +45,8 @@ def parse_args():
     # Network
     parser.add_argument('--network', type=str, default='ggcnn2', help='Network Name in .models')
 
-    # Dataset & Data & Training 
-    parser.add_argument('--dataset', default='jacquard_t',type=str, help='Dataset Name ("cornell" or "jaquard")')
+    # Dataset & Data & Training
+    parser.add_argument('--dataset', default='jacquard',type=str, help='Dataset Name ("cornell" or "jaquard")')
     parser.add_argument('--dataset-path', default = './jacquard',type=str, help='Path to dataset')
     parser.add_argument('--ADJ', default = 0,type=int, help='Whether to use ADJ dataset')
     parser.add_argument('--ADJtrain-path', default = 'train_ADJ.npy',type=str, help='Path to dataset')
@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument('--num-workers', type=int, default=8, help='Dataset workers')
 
     parser.add_argument('--batch-size', type=int, default=8, help='Batch size')
-    parser.add_argument('--epochs', type=int, default=50, help='Training epochs')
+    parser.add_argument('--epochs', type=int, default=100, help='Training epochs')
     parser.add_argument('--batches-per-epoch', type=int, default=300, help='Batches per Epoch')
     parser.add_argument('--val-batches', type=int, default=250, help='Validation Batches')
 
@@ -241,7 +241,7 @@ def run():
         num_workers=args.num_workers
     )
     val_dataset = Dataset(args.dataset_path, start=args.split, end=1.0, ds_rotate=args.ds_rotate,
-                          random_rotate=True, random_zoom=True,ADJ = args.ADJ, npy_path = args.ADJtest_path,
+                          random_rotate=True, random_zoom=True,ADJ = 0, npy_path = args.ADJtest_path,
                           include_depth=args.use_depth, include_rgb=args.use_rgb)
     val_data = torch.utils.data.DataLoader(
         val_dataset,

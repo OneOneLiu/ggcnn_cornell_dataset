@@ -49,8 +49,12 @@ if pretrain:
 
 # patch_size = input("patch_size")
 # logger.info('patch_size:' + str([patch_size]))
-map_list = ['pos','prob','patch']
-map_list = ['pos','prob']
+patch = 1
+if patch:
+    map_list = ['pos','prob','patch']
+    
+else:
+    map_list = ['pos','prob']
 def parse_args():
     parser = argparse.ArgumentParser(description='Train GG-CNN')
 
@@ -58,9 +62,11 @@ def parse_args():
     parser.add_argument('--network', type=str, default='ggcnn2_patch_v4', help='Network Name in .models')
 
     # Dataset & Data & Training5
-    parser.add_argument('--dataset', default='jacquard',type=str, help='Dataset Name ("cornell" or "jaquard")')
+    parser.add_argument('--dataset', default='jacquard_t',type=str, help='Dataset Name ("cornell" or "jaquard")')
     parser.add_argument('--dataset-path', default = './jacquard',type=str, help='Path to dataset')
+    0
     parser.add_argument('--ADJ', default = 1,type=int, help='Whether to use ADJ dataset')
+    parser.add_argument('--ADJV', default = 0,type=int, help='Whether to use ADJ dataset for Validation')
     parser.add_argument('--ADJtrain-path', default =
      'train_ADJ.npy',type=str, help='Path to dataset')
     parser.add_argument('--ADJtest-path', default = 'test_ADJ.npy',type=str, help='Path to dataset')
@@ -182,7 +188,7 @@ def validate(net, device, val_data, batches_per_epoch):
                                 results[pos]['positive_'+str(edge_threshold)] += 1
                             else:
                                 results[pos]['negative_'+str(edge_threshold)] += 1
-                        if lr_congruous < 0.85 and tb_congruous < 0.85:
+                        if edge > 4 and lr_congruous < 0.85 and tb_congruous < 0.85:
                             results[pos]['perfect'] += 1
                         else:
                             results[pos]['not_perfect'] += 1
@@ -312,7 +318,7 @@ def run():
         num_workers=args.num_workers
     )
     val_dataset = Dataset(args.dataset_path, start=args.split, end=1.0, ds_rotate=args.ds_rotate,
-                          random_rotate=True, random_zoom=True,ADJ = args.ADJ, npy_path = args.ADJtest_path,
+                          random_rotate=True, random_zoom=True, ADJ = args.ADJV, npy_path = args.ADJtest_path,
                           include_depth=args.use_depth, include_rgb=args.use_rgb)
     val_data = torch.utils.data.DataLoader(
         val_dataset,
@@ -354,7 +360,7 @@ def run():
         for i in range(10):
             logger.info('{0}_Validating...'.format(i))
             val_results = validate(net, device, val_data, args.val_batches)
-            print_result(val_results,patch = False)
+            print_result(val_results,patch = patch)
     for epoch in range(args.epochs):
         logger.info('Beginning Epoch {:02d}'.format(epoch))
         train_results = train(epoch, net, device, train_data, optimizer, args.batches_per_epoch, vis=args.vis)
@@ -367,8 +373,8 @@ def run():
         # Run Validation
         logger.info('Validating...')
         val_results = validate(net, device, val_data, args.val_batches)
-        test_results = val_results['pos']
-        print_result(val_results,patch = False)
+        test_results = val_results['pos']   
+        print_result(val_results,patch = patch)
 
 
         # Log validation results to tensorbaord

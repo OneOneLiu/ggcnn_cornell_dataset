@@ -188,7 +188,7 @@ def visual_acc_3_value(filepath,dis = True,smooth = False):
     '''
     with open(filepath,'r') as f:
         log = f.read()
-    acc = re.findall('iou_acc:.+= (\d.\d{4})',log)
+        acc = re.findall('iou_acc:.+= (\d.\d{4})',log)
     p_acc = re.findall('perfect_acc:.+= (\d.\d{4})',log)
     true_accs = []
     for i in range(20):
@@ -202,12 +202,14 @@ def visual_acc_3_value(filepath,dis = True,smooth = False):
     groups_num = len(acc) // length
     groups_acc = []
     groups_p_acc = []
+    groups_f_acc = []
     for i in range(groups_num):
         groups_acc.append(acc[i*length:i*length+length])
         groups_p_acc.append(p_acc[i*length:i*length+length])
+        groups_f_acc.append(true_accs[3][i*length:i*length+length])
     groups_acc = np.asarray(groups_acc).astype(np.float)
     groups_p_acc = np.asarray(groups_p_acc).astype(np.float)
-
+    groups_f_acc = np.asarray(groups_f_acc).astype(np.float)
     # 各求平均值,最大值和最小值
     avg_acc = np.mean(groups_acc,axis = 0)
     max_acc = np.max(groups_acc,axis = 0)
@@ -217,35 +219,45 @@ def visual_acc_3_value(filepath,dis = True,smooth = False):
     max_p_acc = np.max(groups_p_acc,axis = 0)
     min_p_acc = np.min(groups_p_acc,axis = 0)
 
+    avg_f_acc = np.mean(groups_f_acc,axis = 0)
+    max_f_acc = np.max(groups_f_acc,axis = 0)
+    min_f_acc = np.min(groups_f_acc,axis = 0)
+
     x = np.arange(0,length)
     fig, ax = plt.subplots(figsize = (10,10))
     ax.fill_between(x, max_acc, min_acc, alpha=.4, linewidth=0.5)
     ax.plot(x, avg_acc, linewidth=3,label='IoU Acc')
 
+    ax.fill_between(x, max_f_acc, min_f_acc, alpha=.4, linewidth=0.5)
+    ax.plot(x, avg_f_acc, linewidth=3,label='Feasible Acc',linestyle = '-.')
+
     ax.fill_between(x, max_p_acc, min_p_acc, alpha=.4, linewidth=0.5)
     ax.plot(x, avg_p_acc, linewidth=3,label='Perfect Acc',linestyle = '--')
 
+    
     # tidy the figure
     ax.set(xlim=(-1, length), xticks=np.linspace(0, length, length // 10 +1),
            ylim=(0, 1), yticks=np.linspace(0, 1, length // 10 +1))
     ax.yaxis.set_major_formatter(FuncFormatter(to_percent))
     ax.grid(True)
     ax.legend(loc='lower right',prop = font1)
-    ax.set_title('Accuracy (Jacquard Typical, patch-loss added since epoch 50)',font1)
+    ax.set_title('Accuracy (Jacquard typical GGCNN2 patch)',font1)
     ax.set_xlabel('Epoches',font1)
     ax.set_ylabel('Accuracy',font1)
     ax.tick_params(axis='both',labelsize = 15)
     return 0
+
 def to_percent(temp, position):
     return '%1.0f'%(100*temp) + '%'
 
 # 绘制三个曲线图
-# filepath = 'output/models/211130_2307_/logger.log'
+filepath = 'output/models/experiment3:patch/220106_0956_/logger.log'
 
-# accuracies = visual_acc_3_value(filepath,smooth=False)
+accuracies = visual_acc_3_value(filepath,smooth=False)
 
+
+pass
 # 以前的图测试
-
-filepath = 'output/models/220103_2258_/logger.log'
+filepath = 'output/models/experiment3:patch/220106_0956_/logger.log'
 
 accuracies = visual_acc_ex(filepath,smooth=False)

@@ -49,6 +49,8 @@ class GGCNN2(nn.Module):
         self.cos_output = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
         self.sin_output = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
         self.width_output = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
+        
+        self.filter = nn.Conv2d(filter_sizes[3], 1, kernel_size=1)
 
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
@@ -61,20 +63,24 @@ class GGCNN2(nn.Module):
         cos_output = self.cos_output(x)
         sin_output = self.sin_output(x)
         width_output = self.width_output(x)
-
-        return pos_output, cos_output, sin_output, width_output
+        
+        filter = self.filter(x)
+        
+        return pos_output, cos_output, sin_output, width_output, filter
 
     def compute_loss(self, xc, yc):
         y_pos, y_cos, y_sin, y_width, mask_prob, mask_height = yc
-        pos_pred, cos_pred, sin_pred, width_pred = self(xc)
+        pos_pred, cos_pred, sin_pred, width_pred, filter= self(xc)
 
         p_loss = F.mse_loss(pos_pred, y_pos)
         cos_loss = F.mse_loss(cos_pred, y_cos)
         sin_loss = F.mse_loss(sin_pred, y_sin)
         width_loss = F.mse_loss(width_pred, y_width)
-
+        
+        prob = filter
+        prob_loss = F.mse_loss(filter,mask_prob)
         return {
-            'loss': p_loss + cos_loss + sin_loss + width_loss,
+            'loss': p_loss + cos_loss + sin_loss + width_loss + prob_loss,
             'losses': {
                 'p_loss': p_loss,
                 'cos_loss': cos_loss,
@@ -82,7 +88,7 @@ class GGCNN2(nn.Module):
                 'width_loss': width_loss
             },
             'pred': {
-                'pos': pos_pred,
+                'pos': prob,
                 'cos': cos_pred,
                 'sin': sin_pred,
                 'width': width_pred
