@@ -66,7 +66,7 @@ def parse_args():
     parser.add_argument('--dataset-path', default = './jacquard',type=str, help='Path to dataset')
     0
     parser.add_argument('--ADJ', default = 1,type=int, help='Whether to use ADJ dataset')
-    parser.add_argument('--ADJV', default = 0,type=int, help='Whether to use ADJ dataset for Validation')
+    parser.add_argument('--ADJV', default = 1,type=int, help='Whether to use ADJ dataset for Validation')
     parser.add_argument('--ADJtrain-path', default =
      'train_ADJ.npy',type=str, help='Path to dataset')
     parser.add_argument('--ADJtest-path', default = 'test_ADJ.npy',type=str, help='Path to dataset')
