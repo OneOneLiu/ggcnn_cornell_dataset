@@ -1,9 +1,0 @@
-.idea
-__pycache__
-tensorboard
-output
-/data
-
-*.pyc
-
-/.python-version
