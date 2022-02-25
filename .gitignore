@@ -14,6 +14,9 @@ trained_models/
 .vscode/
 jacquard_code_old/*
 ggcnn2_old/*
+ggcnn-master/*
+ggcnn-master_origin/*
+ggcnn2_old/*
 output/*
 *add_POTO/
 # ignore datasets
